@@ -45,7 +45,13 @@ async function main() {
     await prisma.usuario.deleteMany();
     
     await prisma.atencion_docente.deleteMany();
-
+    await prisma.bloque_no_lectivo.deleteMany();
+    await prisma.carga_no_lectiva.deleteMany();
+    await prisma.declaracion_carga.deleteMany();
+    await prisma.formato_generado.deleteMany();
+    await prisma.historial_notificacion.deleteMany();
+    await prisma.preferencia_notificacion.deleteMany();
+    await prisma.cola_notificacion.deleteMany();
     await prisma.docente.deleteMany();
     await prisma.curso.deleteMany();
 
@@ -336,7 +342,7 @@ async function main() {
     await syncAndAssignTeachers(prisma);
     console.log('=== SEMILLA DE HORARIOS COMPLETADA CON ÉXITO ===');
     console.log(`Total cursos creados: ${ofertasDef.length}`);
-    console.log(`Total docentes configurados: ${docentesDef.length}`);
+    console.log(`Total docentes configurados: ${docentesSeed.length}`);
   } catch (error: any) {
     console.error('=== ERROR EN SEMILLA ===');
     console.error(error);
