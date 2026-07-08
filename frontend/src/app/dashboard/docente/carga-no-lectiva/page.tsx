@@ -38,6 +38,13 @@ type ReglasCargaNoLectiva = {
   limites_fijos_por_seccion: Record<string, number>;
 };
 
+type ResultadoInteraccionCelda = {
+  permitido: boolean;
+  puedeAgregar: boolean;
+  puedeQuitar: boolean;
+  motivo?: string;
+};
+
 const SECCIONES: Array<{ clave: SeccionNoLectivaKey; titulo: string; ayuda: string }> = [
   { clave: 'PREPARACION_EVALUACION', titulo: 'Preparación y Evaluación', ayuda: 'Horas para preparación de clases y evaluación de actividades.' },
   { clave: 'CONSEJERIA_TUTORIA', titulo: 'Consejería y Tutoría', ayuda: 'Horas dedicadas a consejería académica y tutoría.' },
@@ -110,6 +117,7 @@ export default function CargaNoLectivaPage() {
   const [pestanaActiva, setPestanaActiva] = useState<'declaracion' | 'calendario' | 'formatos'>('declaracion');
 
   const [seccionActiva, setSeccionActiva] = useState<SeccionNoLectivaKey | null>(null);
+  const [seccionArrastrando, setSeccionArrastrando] = useState<SeccionNoLectivaKey | null>(null);
   const [bloquesAsignados, setBloquesAsignados] = useState<any[]>([]);
   const [erroresSecciones, setErroresSecciones] = useState<Record<string, string>>({});
 
@@ -314,61 +322,297 @@ export default function CargaNoLectivaPage() {
     }
   };
 
-  const handleCeldaClick = (diaSemana: string, horaInicio: string) => {
+  const evaluarInteraccionCelda = (
+    diaSemana: string,
+    horaInicio: string,
+    mostrarMensajes = false
+  ): ResultadoInteraccionCelda => {
     if (!seccionActiva) {
-      setToast({ mensaje: 'Primero selecciona una sección (Pinceles) de la lista inferior', tipo: 'error' });
-      return;
+      if (mostrarMensajes) {
+        setToast({
+          mensaje: 'Primero selecciona una sección (Pinceles) de la lista inferior',
+          tipo: 'error',
+        });
+      }
+
+      return {
+        permitido: false,
+        puedeAgregar: false,
+        puedeQuitar: false,
+        motivo: 'Primero selecciona una sección (Pinceles) de la lista inferior',
+      };
     }
-    
+
     const hh = parseInt(horaInicio.split(':')[0]);
-    
-    const isLectivo = horarioData?.lectivos?.find((l: any) => l.dia_semana === diaSemana && parseInt(l.hora_inicio) <= hh && parseInt(l.hora_fin) > hh);
+
+    const isLectivo = horarioData?.lectivos?.find(
+      (l: any) =>
+        l.dia_semana === diaSemana &&
+        parseInt(l.hora_inicio) <= hh &&
+        parseInt(l.hora_fin) > hh
+    );
+
     if (isLectivo) {
-      setToast({ mensaje: 'Esta hora ya está ocupada por una clase lectiva.', tipo: 'error' });
+      if (mostrarMensajes) {
+        setToast({
+          mensaje: 'Esta hora ya está ocupada por una clase lectiva.',
+          tipo: 'error',
+        });
+      }
+
+      return {
+        permitido: false,
+        puedeAgregar: false,
+        puedeQuitar: false,
+        motivo: 'Esta hora ya está ocupada por una clase lectiva.',
+      };
+    }
+
+    const bloqueExistente = bloquesAsignados.find(
+      (b) =>
+        b.dia_semana === diaSemana &&
+        b.hora_inicio === horaInicio
+    );
+
+    const esMismaSeccion =
+      bloqueExistente?.seccion === seccionActiva;
+
+    if (bloqueExistente) {
+      if (esMismaSeccion) {
+        return {
+          permitido: true,
+          puedeAgregar: false,
+          puedeQuitar: true,
+        };
+      }
+
+      return {
+        permitido: false,
+        puedeAgregar: false,
+        puedeQuitar: false,
+        motivo: 'Esta celda ya está ocupada por otra sección no lectiva.',
+      };
+    }
+
+    const declaradas =
+      Number(secciones[seccionActiva].horas) || 0;
+
+    const asignadas =
+      bloquesAsignados.filter(
+        (b) => b.seccion === seccionActiva
+      ).length;
+
+    const resActivas = restricciones?.franjaInicio
+      ? restricciones
+      : restricciones?.data;
+
+    const bloqueoAlmuerzoInicio = resActivas?.bloqueoAlmuerzoInicio
+      ? parseInt(String(resActivas.bloqueoAlmuerzoInicio).split(':')[0])
+      : null;
+
+    const bloqueoAlmuerzoFin = resActivas?.bloqueoAlmuerzoFin
+      ? parseInt(String(resActivas.bloqueoAlmuerzoFin).split(':')[0])
+      : null;
+
+    if (
+      bloqueoAlmuerzoInicio !== null &&
+      bloqueoAlmuerzoFin !== null &&
+      hh >= bloqueoAlmuerzoInicio &&
+      hh < bloqueoAlmuerzoFin
+    ) {
+      if (mostrarMensajes) {
+        setToast({
+          mensaje: 'Esta celda está bloqueada por la franja de almuerzo.',
+          tipo: 'error',
+        });
+      }
+
+      return {
+        permitido: false,
+        puedeAgregar: false,
+        puedeQuitar: false,
+        motivo: 'Esta celda está bloqueada por la franja de almuerzo.',
+      };
+    }
+
+    if (asignadas >= declaradas) {
+      if (mostrarMensajes) {
+        setToast({
+          mensaje: `No puedes exceder el máximo de horas (${declaradas}h) declaradas para esta sección.`,
+          tipo: 'error',
+        });
+      }
+
+      return {
+        permitido: false,
+        puedeAgregar: false,
+        puedeQuitar: false,
+        motivo: `No puedes exceder el máximo de horas (${declaradas}h) declaradas para esta sección.`,
+      };
+    }
+
+    const maxHorasDiarias = resActivas?.horasMaximasDiarias
+      ? Number(resActivas.horasMaximasDiarias)
+      : 9;
+
+    const horasLectivasEnDia =
+      horarioData?.lectivos
+        ?.filter((l: any) => l.dia_semana === diaSemana)
+        .reduce(
+          (acc: number, l: any) =>
+            acc +
+            (parseInt(l.hora_fin) -
+              parseInt(l.hora_inicio)),
+          0
+        ) || 0;
+
+    const horasNoLectivasEnDia =
+      bloquesAsignados.filter(
+        (b) => b.dia_semana === diaSemana
+      ).length;
+
+    if (
+      horasLectivasEnDia + horasNoLectivasEnDia >=
+      maxHorasDiarias
+    ) {
+      if (mostrarMensajes) {
+        setToast({
+          mensaje: `Límite diario alcanzado. No puedes asignar más de ${maxHorasDiarias}h en un mismo día (Lectiva + No Lectiva).`,
+          tipo: 'error',
+        });
+      }
+
+      return {
+        permitido: false,
+        puedeAgregar: false,
+        puedeQuitar: false,
+        motivo: `Límite diario alcanzado. No puedes asignar más de ${maxHorasDiarias}h en un mismo día (Lectiva + No Lectiva).`,
+      };
+    }
+
+    return {
+      permitido: true,
+      puedeAgregar: true,
+      puedeQuitar: false,
+    };
+  };
+
+  const iniciarArrastreSeccion = (clave: SeccionNoLectivaKey) => {
+    setSeccionActiva(clave);
+    setSeccionArrastrando(clave);
+  };
+
+  const finalizarArrastreSeccion = () => {
+    setSeccionArrastrando(null);
+  };
+
+  const aplicarBloqueNoLectivo = (
+    diaSemana: string,
+    horaInicio: string,
+    modo: 'click' | 'arrastre'
+  ) => {
+    const resultado = evaluarInteraccionCelda(
+      diaSemana,
+      horaInicio,
+      modo === 'click'
+    );
+
+    if (!resultado.permitido) {
+      if (modo === 'arrastre') {
+        finalizarArrastreSeccion();
+      }
       return;
     }
 
-    const bloqueExistenteIndex = bloquesAsignados.findIndex((b) => b.dia_semana === diaSemana && b.hora_inicio === horaInicio);
-    const esMismaSeccion = bloqueExistenteIndex >= 0 && bloquesAsignados[bloqueExistenteIndex].seccion === seccionActiva;
-
-    // Si no estamos removiendo, verificamos que tengamos cupo disponible
-    if (!esMismaSeccion) {
-      const declaradas = Number(secciones[seccionActiva].horas) || 0;
-      const asignadas = bloquesAsignados.filter((b) => b.seccion === seccionActiva).length;
-      if (asignadas >= declaradas) {
-        setToast({ mensaje: `No puedes exceder el máximo de horas (${declaradas}h) declaradas para esta sección.`, tipo: 'error' });
-        return;
-      }
-
-      const resActivas = restricciones?.franjaInicio ? restricciones : restricciones?.data;
-      const maxHorasDiarias = resActivas?.horasMaximasDiarias ? Number(resActivas.horasMaximasDiarias) : 9;
-
-      const horasLectivasEnDia = horarioData?.lectivos?.filter((l: {dia_semana: string}) => l.dia_semana === diaSemana).reduce((acc: number, l: {hora_fin: string, hora_inicio: string}) => acc + (parseInt(l.hora_fin) - parseInt(l.hora_inicio)), 0) || 0;
-      const horasNoLectivasEnDia = bloquesAsignados.filter((b) => b.dia_semana === diaSemana).length;
-      
-      if (horasLectivasEnDia + horasNoLectivasEnDia >= maxHorasDiarias) {
-        setToast({ mensaje: `Límite diario alcanzado. No puedes asignar más de ${maxHorasDiarias}h en un mismo día (Lectiva + No Lectiva).`, tipo: 'error' });
-        return;
-      }
+    if (resultado.puedeQuitar) {
+      setBloquesAsignados((prev) =>
+        prev.filter(
+          (b) =>
+            !(
+              b.dia_semana === diaSemana &&
+              b.hora_inicio === horaInicio
+            )
+        )
+      );
+      return;
     }
 
-    const horaFin = `${(hh + 1).toString().padStart(2, '0')}:00`;
+    const hh = parseInt(horaInicio.split(':')[0]);
 
-    setBloquesAsignados((prev) => {
-      const index = prev.findIndex((b) => b.dia_semana === diaSemana && b.hora_inicio === horaInicio);
-      
-      if (index >= 0) {
-        const prevBloques = [...prev];
-        if (prevBloques[index].seccion === seccionActiva) {
-          prevBloques.splice(index, 1);
-        } else {
-          prevBloques[index] = { dia_semana: diaSemana, hora_inicio: horaInicio, hora_fin: horaFin, seccion: seccionActiva };
-        }
-        return prevBloques;
+    const horaFin = `${(hh + 1)
+      .toString()
+      .padStart(2, '0')}:00`;
+
+    setBloquesAsignados((prev) => [
+      ...prev,
+      {
+        dia_semana: diaSemana,
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
+        seccion: seccionActiva!,
+      },
+    ]);
+
+    if (modo === 'arrastre') {
+      const declaradas =
+        Number(secciones[seccionActiva!].horas) || 0;
+
+      const asignadas =
+        bloquesAsignados.filter(
+          (b) => b.seccion === seccionActiva
+        ).length +
+        1;
+
+      if (declaradas > 0 && asignadas >= declaradas) {
+        finalizarArrastreSeccion();
       }
-      
-      return [...prev, { dia_semana: diaSemana, hora_inicio: horaInicio, hora_fin: horaFin, seccion: seccionActiva }];
-    });
+    }
+  };
+
+  const handleCeldaClick = (diaSemana: string, horaInicio: string) => {
+    const resultado = evaluarInteraccionCelda(diaSemana, horaInicio, true);
+
+    if (!resultado.permitido) {
+      return;
+    }
+
+    aplicarBloqueNoLectivo(diaSemana, horaInicio, 'click');
+  };
+
+  const handleIntentoCelda = (celda: {
+    diaSemana: string;
+    horaInicio: string;
+    estado: 'LIBRE' | 'LECTIVO' | 'NO_LECTIVO' | 'BLOQUEO_ALMUERZO';
+    info?: {
+      origen?: string;
+      seccion?: string;
+    };
+  }) => {
+    evaluarInteraccionCelda(celda.diaSemana, celda.horaInicio, true);
+  };
+
+  const handleArrastreSobreCelda = (celda: {
+    diaSemana: string;
+    horaInicio: string;
+    estado: 'LIBRE' | 'LECTIVO' | 'NO_LECTIVO' | 'BLOQUEO_ALMUERZO';
+    info?: {
+      origen?: string;
+      seccion?: string;
+    };
+  }) => {
+    if (celda.estado === 'NO_LECTIVO' && celda.info?.seccion !== seccionActiva) {
+      return;
+    }
+
+    aplicarBloqueNoLectivo(celda.diaSemana, celda.horaInicio, 'arrastre');
+  };
+
+  const puedeInteractuarCelda = (celda: {
+    diaSemana: string;
+    horaInicio: string;
+    estado: 'LIBRE' | 'LECTIVO' | 'NO_LECTIVO' | 'BLOQUEO_ALMUERZO';
+  }) => {
+    return evaluarInteraccionCelda(celda.diaSemana, celda.horaInicio, false).permitido;
   };
 
   const construirMatriz = () => {
@@ -867,9 +1111,16 @@ export default function CargaNoLectivaPage() {
                           return (
                             <button
                               key={clave}
+                              draggable
                               onClick={() => setSeccionActiva(clave as SeccionNoLectivaKey)}
+                              onDragStart={(e) => {
+                                e.dataTransfer.effectAllowed = 'copy';
+                                e.dataTransfer.setData('text/plain', clave);
+                                iniciarArrastreSeccion(clave as SeccionNoLectivaKey);
+                              }}
+                              onDragEnd={finalizarArrastreSeccion}
                               className={cn(
-                                'flex items-center justify-between p-4 rounded-xl border text-left transition-all duration-200 w-full',
+                                'flex items-center justify-between p-4 rounded-xl border text-left transition-all duration-200 w-full cursor-grab active:cursor-grabbing select-none',
                                 seccionActiva === clave 
                                   ? 'bg-indigo-50 border-indigo-500 shadow-md ring-2 ring-indigo-500/20' 
                                   : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30'
@@ -894,10 +1145,14 @@ export default function CargaNoLectivaPage() {
 
                   {/* Calendario */}
                   <div className="flex-grow min-w-0 bg-white rounded-2xl p-4 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 overflow-x-auto w-full">
-                    <MatrizCargaNoLectiva 
-                      matriz={construirMatriz()} 
-                      alHacerClickCelda={handleCeldaClick} 
+                    <MatrizCargaNoLectiva
+                      matriz={construirMatriz()}
+                      alIntentarCelda={handleIntentoCelda}
+                      alHacerClickCelda={handleCeldaClick}
+                      alArrastrarSobreCelda={handleArrastreSobreCelda}
+                      seccionArrastrando={seccionArrastrando}
                       bloqueado={mutationGuardarHorario.isPending}
+                      puedeInteractuarCelda={puedeInteractuarCelda}
                     />
                   </div>
                 </div>
