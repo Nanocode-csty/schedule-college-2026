@@ -32,10 +32,32 @@ import {
   LayoutDashboard,
   Search,
   ArrowRight,
-  Activity
+  Activity,
+  Building2,
+  CheckCircle2,
+  XCircle,
+  Clock3,
 } from 'lucide-react';
 import { SelectorFiltrable } from '@/components/ui/SelectorFiltrable';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
+
+const DIAS_CONSULTA = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
+const HORAS_CONSULTA = Array.from({ length: 17 }, (_, index) => {
+  const hora = index + 6;
+  return `${hora.toString().padStart(2, '0')}:00`;
+});
+
+const convertirAHoras = (valor: string) => {
+  const [horas, minutos] = valor.split(':').map(Number);
+  return horas * 60 + minutos;
+};
+
+const horaCruzaBloque = (horaConsulta: string, horaInicio: string, horaFin: string) => {
+  const consulta = convertirAHoras(horaConsulta);
+  const inicio = convertirAHoras(horaInicio);
+  const fin = convertirAHoras(horaFin);
+  return consulta >= inicio && consulta < fin;
+};
 
 export default function RegistroManualHorariosPage() {
   const queryClient = useQueryClient();
@@ -43,6 +65,9 @@ export default function RegistroManualHorariosPage() {
   const [ambienteId, setAmbienteId] = useState<number | null>(null);
   const [componenteSeleccionado, setComponenteSeleccionado] = useState<number | null>(null);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState<number | null>(null);
+  const [mostrarConsultaAmbientes, setMostrarConsultaAmbientes] = useState(false);
+  const [consultaDia, setConsultaDia] = useState<string>('LUNES');
+  const [consultaHora, setConsultaHora] = useState<string>('08:00');
   const [sesionId] = useState(crypto.randomUUID());
   const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'success' | 'error' } | null>(null);
 
@@ -60,6 +85,16 @@ export default function RegistroManualHorariosPage() {
   const { data: ambientes } = useQuery({
     queryKey: ['ambientes-secretaria'],
     queryFn: () => ambientesService.listar().then((res) => res.data),
+  });
+
+  const {
+    data: disponibilidadGeneral,
+    isLoading: disponibilidadGeneralLoading,
+    refetch: consultarDisponibilidadGeneral,
+  } = useQuery({
+    queryKey: ['consulta-rapida-ambientes', idPeriodo],
+    queryFn: () => ambientesService.disponibilidadGeneral(idPeriodo).then((res) => res.data),
+    enabled: false,
   });
 
   const { data: restricciones } = useQuery({
@@ -119,6 +154,54 @@ export default function RegistroManualHorariosPage() {
     queryFn: () => gruposService.listarPorComponente(componenteSeleccionado as number).then((res) => res.data),
     enabled: !!componenteSeleccionado,
   });
+
+  const resultadoConsultaAmbientes = useMemo(() => {
+    const ambientesConsulta = Array.isArray(disponibilidadGeneral) ? disponibilidadGeneral : [];
+
+    const clasificacion = ambientesConsulta.reduce(
+      (acumulado: {
+        disponibles: any[];
+        ocupados: any[];
+      }, ambiente: any) => {
+        const bloquesDelDia = Array.isArray(ambiente.bloques)
+          ? ambiente.bloques.filter((bloque: any) => bloque.dia_semana === consultaDia)
+          : [];
+
+        const estaOcupado = bloquesDelDia.some((bloque: any) =>
+          horaCruzaBloque(consultaHora, bloque.hora_inicio, bloque.hora_fin)
+        );
+
+        const registro = {
+          id: ambiente.id,
+          codigo: ambiente.codigo,
+          tipo: ambiente.tipo,
+          capacidad: ambiente.capacidad,
+          bloqueCoincidente: bloquesDelDia.find((bloque: any) =>
+            horaCruzaBloque(consultaHora, bloque.hora_inicio, bloque.hora_fin)
+          ) || null,
+        };
+
+        if (estaOcupado) {
+          acumulado.ocupados.push(registro);
+        } else {
+          acumulado.disponibles.push(registro);
+        }
+
+        return acumulado;
+      },
+      { disponibles: [], ocupados: [] }
+    );
+
+    clasificacion.disponibles.sort((a, b) => a.codigo.localeCompare(b.codigo));
+    clasificacion.ocupados.sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+    return clasificacion;
+  }, [consultaDia, consultaHora, disponibilidadGeneral]);
+
+  const manejarConsultaAmbientes = async () => {
+    setMostrarConsultaAmbientes(true);
+    await consultarDisponibilidadGeneral();
+  };
 
   useEffect(() => {
     if (!componenteSeleccionado) {
@@ -366,9 +449,21 @@ export default function RegistroManualHorariosPage() {
                   <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 shadow-sm">
                     <BookOpen className="w-6 h-6" />
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-800 tracking-tight">Curso y Ambiente</h2>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Configuración</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <h2 className="text-xl font-bold text-slate-800 tracking-tight">Curso y Ambiente</h2>
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Configuración</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setMostrarConsultaAmbientes((actual) => !actual)}
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 transition-colors hover:bg-emerald-100"
+                      >
+                        <Building2 className="w-3.5 h-3.5" />
+                        {mostrarConsultaAmbientes ? 'Ocultar consulta' : 'Consultar disponibilidad de ambientes'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -466,6 +561,198 @@ export default function RegistroManualHorariosPage() {
             )}
           </div>
         </div>
+
+        {/* Consulta rapida de disponibilidad de ambientes */}
+        {mostrarConsultaAmbientes && (
+        <div className="bg-white rounded-[3rem] shadow-xl border border-slate-200/60 p-10 space-y-8">
+          <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5 border-b border-slate-100 pb-8">
+            <div className="flex items-center gap-6">
+              <div className="p-4 bg-emerald-50 rounded-3xl text-emerald-600 shadow-sm">
+                <Building2 className="w-8 h-8" />
+              </div>
+              <div>
+                <h2 className="text-3xl font-black text-slate-800 tracking-tight">Consulta rápida de disponibilidad</h2>
+                <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  Ambientes disponibles y ocupados según día y hora
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 px-6 py-3 bg-slate-50 text-slate-600 rounded-[1.5rem] border border-slate-200 text-xs font-black uppercase tracking-widest shadow-sm">
+              <Clock3 className="w-4 h-4" />
+              Período activo: {periodoActivo?.nombre || 'No identificado'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch">
+            <div className="xl:col-span-4 bg-gradient-to-br from-[#0b1f3a] to-[#123b6d] rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
+              <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+              <div className="relative z-10 space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/10 rounded-2xl border border-white/10">
+                    <Clock3 className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold tracking-tight">Filtro de consulta</h3>
+                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Ingreso rápido</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <Selector
+                    label="Día"
+                    opciones={DIAS_CONSULTA.map((dia) => ({ valor: dia, etiqueta: dia.charAt(0) + dia.slice(1).toLowerCase() }))}
+                    value={consultaDia}
+                    onChange={(e) => setConsultaDia(e.target.value)}
+                    className="rounded-2xl border-white/10 bg-white/95 text-slate-700 focus:border-emerald-400 focus:ring-emerald-400/10"
+                  />
+
+                  <Selector
+                    label="Hora"
+                    opciones={HORAS_CONSULTA.map((hora) => ({ valor: hora, etiqueta: hora }))}
+                    value={consultaHora}
+                    onChange={(e) => setConsultaHora(e.target.value)}
+                    className="rounded-2xl border-white/10 bg-white/95 text-slate-700 focus:border-emerald-400 focus:ring-emerald-400/10"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={manejarConsultaAmbientes}
+                    disabled={disponibilidadGeneralLoading || !idPeriodo}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                  >
+                    <Search className="w-4 h-4" />
+                    {disponibilidadGeneralLoading ? 'Consultando...' : 'Consultar'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-2xl bg-white/10 border border-white/10 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/45">Disponibles</p>
+                    <p className="mt-2 text-3xl font-black text-emerald-300">{resultadoConsultaAmbientes.disponibles.length}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 border border-white/10 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/45">Ocupados</p>
+                    <p className="mt-2 text-3xl font-black text-rose-300">{resultadoConsultaAmbientes.ocupados.length}</p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-white/60 leading-relaxed">
+                  La consulta usa la programación activa del período para separar los ambientes libres de los que ya tienen bloques asignados.
+                </p>
+              </div>
+            </div>
+
+            <div className="xl:col-span-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="rounded-[2.5rem] border border-emerald-100 bg-emerald-50/50 p-6 shadow-sm flex flex-col">
+                <div className="flex items-center justify-between gap-4 border-b border-emerald-100 pb-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-emerald-500 text-white">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-emerald-950">Ambientes disponibles</h3>
+                      <p className="text-xs font-bold uppercase tracking-widest text-emerald-700/70">Libres en la franja seleccionada</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-emerald-700 border border-emerald-200">
+                    {resultadoConsultaAmbientes.disponibles.length}
+                  </span>
+                </div>
+
+                <div className="min-h-[300px] max-h-[420px] overflow-y-auto custom-scrollbar space-y-3 pr-1">
+                  {!disponibilidadGeneralLoading && !disponibilidadGeneral ? (
+                    <div className="flex h-[240px] items-center justify-center rounded-2xl border border-dashed border-emerald-200 bg-white text-center">
+                      <div className="space-y-2">
+                        <p className="text-sm font-black text-slate-700">Aún no has realizado una consulta</p>
+                        <p className="text-xs text-slate-400">Selecciona día y hora, luego presiona Consultar.</p>
+                      </div>
+                    </div>
+                  ) : disponibilidadGeneralLoading ? (
+                    <div className="flex h-[240px] items-center justify-center text-sm font-bold text-slate-400">
+                      Consultando disponibilidad...
+                    </div>
+                  ) : resultadoConsultaAmbientes.disponibles.length > 0 ? (
+                    resultadoConsultaAmbientes.disponibles.map((ambiente: any) => (
+                      <div key={ambiente.id} className="rounded-2xl border border-emerald-100 bg-white p-4 flex items-center justify-between gap-4 shadow-sm">
+                        <div>
+                          <p className="text-sm font-black text-slate-800">{ambiente.codigo}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            {ambiente.tipo === 'AULA' ? 'Aula' : ambiente.tipo === 'LABORATORIO' ? 'Laboratorio' : ambiente.tipo}
+                          </p>
+                        </div>
+                        <div className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 border border-emerald-100">
+                          Cap. {ambiente.capacidad}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex h-[240px] items-center justify-center rounded-2xl border border-dashed border-emerald-200 bg-white text-center">
+                      <div className="space-y-2">
+                        <p className="text-sm font-black text-slate-700">No hay ambientes libres</p>
+                        <p className="text-xs text-slate-400">Prueba otra hora o día para encontrar disponibilidad.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[2.5rem] border border-rose-100 bg-rose-50/50 p-6 shadow-sm flex flex-col">
+                <div className="flex items-center justify-between gap-4 border-b border-rose-100 pb-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-rose-500 text-white">
+                      <XCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-rose-950">Ambientes ocupados</h3>
+                      <p className="text-xs font-bold uppercase tracking-widest text-rose-700/70">Con bloqueos en la franja seleccionada</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-rose-700 border border-rose-200">
+                    {resultadoConsultaAmbientes.ocupados.length}
+                  </span>
+                </div>
+
+                <div className="min-h-[300px] max-h-[420px] overflow-y-auto custom-scrollbar space-y-3 pr-1">
+                  {!disponibilidadGeneralLoading && !disponibilidadGeneral ? (
+                    <div className="flex h-[240px] items-center justify-center rounded-2xl border border-dashed border-rose-200 bg-white text-center">
+                      <div className="space-y-2">
+                        <p className="text-sm font-black text-slate-700">Aún no has realizado una consulta</p>
+                        <p className="text-xs text-slate-400">Selecciona día y hora, luego presiona Consultar.</p>
+                      </div>
+                    </div>
+                  ) : disponibilidadGeneralLoading ? (
+                    <div className="flex h-[240px] items-center justify-center text-sm font-bold text-slate-400">
+                      Consultando disponibilidad...
+                    </div>
+                  ) : resultadoConsultaAmbientes.ocupados.length > 0 ? (
+                    resultadoConsultaAmbientes.ocupados.map((ambiente: any) => (
+                      <div key={ambiente.id} className="rounded-2xl border border-rose-100 bg-white p-4 flex items-center justify-between gap-4 shadow-sm">
+                        <div>
+                          <p className="text-sm font-black text-slate-800">{ambiente.codigo}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            {ambiente.tipo === 'AULA' ? 'Aula' : ambiente.tipo === 'LABORATORIO' ? 'Laboratorio' : ambiente.tipo}
+                          </p>
+                        </div>
+                        <div className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-700 border border-rose-100">
+                          Cap. {ambiente.capacidad}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex h-[240px] items-center justify-center rounded-2xl border border-dashed border-rose-200 bg-white text-center">
+                      <div className="space-y-2">
+                        <p className="text-sm font-black text-slate-700">No hay ambientes ocupados</p>
+                        <p className="text-xs text-slate-400">Toda la oferta está libre en esta franja.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        )}
 
         {/* FILA INFERIOR: MATRIZ Y VISTA PREVIA */}
         <div className="space-y-8">
