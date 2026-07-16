@@ -29,6 +29,8 @@ export class ConfiguracionService {
       limiteMaxAsesoriaTesis: parseInt(mapa['LIMITE_MAX_ASESORIA_TESIS'] || '2'),
       limiteMaxCapacitacion: parseInt(mapa['LIMITE_MAX_CAPACITACION'] || '1'),
       limiteMaxInvestigacion: parseInt(mapa['LIMITE_MAX_INVESTIGACION'] || '6'),
+      laboraSabado: mapa['LABORA_SABADO'] !== 'false', // default to true
+      numGruposGenerales: parseInt(mapa['NUM_GRUPOS_GENERALES'] || '1'), // default to 1
     };
   }
 

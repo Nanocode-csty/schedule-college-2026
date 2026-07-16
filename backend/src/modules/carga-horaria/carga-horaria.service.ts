@@ -1,3 +1,4 @@
+// Load with new Prisma Client
 import { prisma } from '@/lib/prisma';
 import { TipoComponente } from '@prisma/client';
 import { PeriodosService } from '../periodos/periodos.service';
@@ -10,14 +11,15 @@ export class CargaHorariaService {
     id_componente: number;
     id_docente: number;
     horas_asignadas: number;
+    numero_grupo_general?: number;
   }) {
-    const { id_componente, id_docente, horas_asignadas } = datos;
+    const { id_componente, id_docente, horas_asignadas, numero_grupo_general = 0 } = datos;
 
     // 1. Validar existencia de componente y docente
     const [componente, docente] = await Promise.all([
       prisma.curso_componente.findUnique({
         where: { id: id_componente },
-        include: { oferta: true, asignaciones: true, grupos: true }
+        include: { oferta: true, grupos: true }
       }),
       prisma.docente.findUnique({
         where: { id: id_docente },
@@ -51,9 +53,9 @@ export class CargaHorariaService {
       }
     }
 
-    // 2. Validar límite legal de horas del docente en el periodo actual
+    // 2. Validar límite legal de horas del docente en el periodo actual (including all grupos generales)
     const horasActualesPeriodo = docente.asignaciones
-      .filter(asig => asig.componente.oferta.id_periodo === id_periodo && asig.id_componente !== id_componente)
+      .filter(asig => asig.componente.oferta.id_periodo === id_periodo)
       .reduce((acc, asig) => acc + asig.horas_asignadas, 0);
     
     const limiteLegal = docente.horas_max_semana || 40;
@@ -62,39 +64,46 @@ export class CargaHorariaService {
       throw new Error(`El docente ha excedido su límite legal de ${limiteLegal} horas semanales para este periodo (Actual en otros cursos: ${horasActualesPeriodo}, Nueva: ${horas_asignadas})`);
     }
 
-    // 3. Validar si el total de horas del componente no se excede
+    // Get existing asignaciones only for this grupo general
+    const asignacionesGrupo = await prisma.asignacion_docente_componente.findMany({
+      where: { id_componente, numero_grupo_general }
+    });
+
+    // 3. Validar total de horas del componente for THIS grupo general
     const totalHorasRequeridas = componente.horas_requeridas;
-    const totalAsignadoOtros = componente.asignaciones
+    const totalAsignadoOtrosGrupo = asignacionesGrupo
       .filter(asig => asig.id_docente !== id_docente)
       .reduce((acc, asig) => acc + asig.horas_asignadas, 0);
 
-    if (totalAsignadoOtros + horas_asignadas > totalHorasRequeridas) {
-      throw new Error(`Las horas asignadas superan el requerimiento del componente (${totalHorasRequeridas}h). Faltan por asignar: ${totalHorasRequeridas - totalAsignadoOtros}h`);
+    if (totalAsignadoOtrosGrupo + horas_asignadas > totalHorasRequeridas) {
+      throw new Error(`Las horas asignadas superan el requerimiento del componente para este grupo (${totalHorasRequeridas}h). Faltan por asignar: ${totalHorasRequeridas - totalAsignadoOtrosGrupo}h`);
     }
 
-    // 4. Activar multi-docente automáticamente si hay más de una asignación
-    if (componente.asignaciones.length > 0 || (totalAsignadoOtros > 0)) {
+    // 4. Activar multi-docente automatically
+    if (asignacionesGrupo.length > 0 || totalAsignadoOtrosGrupo > 0) {
       await prisma.curso_componente.update({
         where: { id: id_componente },
         data: { permite_multi_docente: true }
       });
     }
 
-    // 5. Upsert de la asignación
+    // 5. Upsert de la asignación with numero_grupo_general
     return prisma.asignacion_docente_componente.upsert({
       where: {
-        id_componente_id_docente: {
-          id_componente: id_componente,
-          id_docente: id_docente
+        id_componente_id_docente_numero_grupo_general: { // The new unique constraint!
+          id_componente,
+          id_docente,
+          numero_grupo_general
         }
       },
       update: {
-        horas_asignadas: horas_asignadas
+        horas_asignadas
       },
       create: {
-        id_componente: id_componente,
-        id_docente: id_docente,
-        horas_asignadas: horas_asignadas
+        id_componente,
+        id_docente,
+        horas_asignadas,
+        numero_grupo_general
       }
     });
   }
@@ -295,28 +304,81 @@ export class CargaHorariaService {
   static async actualizarAsignacion(id: number, datos: { horas_asignadas: number }) {
     const asignacion = await prisma.asignacion_docente_componente.findUnique({
       where: { id },
-      include: { componente: { include: { grupos: true } } }
+      include: { 
+        componente: { 
+          include: { 
+            grupos: true, 
+            oferta: true 
+          } 
+        }, 
+        docente: {
+          include: {
+            asignaciones: {
+              include: {
+                componente: {
+                  include: {
+                    oferta: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!asignacion) throw new Error('Asignación no encontrada');
 
-    // Validar bloques para Laboratorio
-    if (asignacion.componente.tipo === 'LABORATORIO') {
-      const nGrupos = asignacion.componente.grupos?.length || 1;
-      const horasPorGrupo = asignacion.componente.horas_requeridas / nGrupos;
-      const numGruposAsignados = datos.horas_asignadas / horasPorGrupo;
+    const { componente, docente, numero_grupo_general } = asignacion;
+    const id_periodo = componente.oferta.id_periodo;
+    const horas_asignadas = Math.round(datos.horas_asignadas);
+
+    // 1. Validar que las horas asignadas sean un múltiplo exacto de las horas por grupo (Solo para LABORATORIO)
+    if (componente.tipo === 'LABORATORIO') {
+      const nGrupos = componente.grupos?.length || 1;
+      const horasPorGrupo = componente.horas_requeridas / nGrupos;
+      const numGruposAsignados = horas_asignadas / horasPorGrupo;
 
       if (Math.abs(numGruposAsignados - Math.round(numGruposAsignados)) > 0.01) {
         throw new Error(
-          `Para Laboratorios, las horas asignadas (${datos.horas_asignadas}h) deben ser un múltiplo exacto de las horas del grupo (${horasPorGrupo}h).`
+          `Para Laboratorios, las horas asignadas (${horas_asignadas}h) deben ser un múltiplo exacto de las horas del grupo (${horasPorGrupo}h).`
         );
       }
+    }
+
+    // 2. Validar límite legal de horas del docente en el periodo actual (excluyendo esta misma asignación)
+    const horasActualesPeriodo = docente.asignaciones
+      .filter(asig => asig.componente.oferta.id_periodo === id_periodo && asig.id !== id)
+      .reduce((acc, asig) => acc + asig.horas_asignadas, 0);
+    
+    const limiteLegal = docente.horas_max_semana || 40;
+
+    if (horasActualesPeriodo + horas_asignadas > limiteLegal) {
+      throw new Error(`El docente ha excedido su límite legal de ${limiteLegal} horas semanales para este periodo (Actual en otros cursos: ${horasActualesPeriodo}, Nueva: ${horas_asignadas})`);
+    }
+
+    // Get existing asignaciones only for this grupo general, excluding this one
+    const asignacionesGrupo = await prisma.asignacion_docente_componente.findMany({
+      where: { 
+        id_componente: componente.id, 
+        numero_grupo_general,
+        id: { not: id }
+      }
+    });
+
+    // 3. Validar total de horas del componente for THIS grupo general
+    const totalHorasRequeridas = componente.horas_requeridas;
+    const totalAsignadoOtrosGrupo = asignacionesGrupo
+      .reduce((acc, asig) => acc + asig.horas_asignadas, 0);
+
+    if (totalAsignadoOtrosGrupo + horas_asignadas > totalHorasRequeridas) {
+      throw new Error(`Las horas asignadas superan el requerimiento del componente para este grupo (${totalHorasRequeridas}h). Faltan por asignar: ${totalHorasRequeridas - totalAsignadoOtrosGrupo}h`);
     }
 
     return prisma.asignacion_docente_componente.update({
       where: { id },
       data: {
-        horas_asignadas: Math.round(datos.horas_asignadas)
+        horas_asignadas
       }
     });
   }
@@ -402,7 +464,7 @@ export class CargaHorariaService {
   /**
    * Obtener cursos con oferta por período, ciclo y/o currícula
    */
-  static async obtenerCursosPorCiclo(id_periodo: number, id_ciclo?: number, id_curricula?: number) {
+  static async obtenerCursosPorCiclo(id_periodo: number, id_ciclo?: number, id_curricula?: number, numero_grupo_general?: number) {
     const where: any = { 
       id_periodo,
       estado: { not: 'ELIMINADO' }
@@ -425,6 +487,7 @@ export class CargaHorariaService {
           include: {
             grupos: true, // INCLUIR GRUPOS PARA CALCULAR n_grupos EN FRONTEND
             asignaciones: {
+              where: numero_grupo_general !== undefined ? { numero_grupo_general } : {},
               include: {
                 docente: true
               }

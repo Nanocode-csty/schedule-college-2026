@@ -5,6 +5,7 @@ export const cargaHorariaService = {
     id_componente: number;
     id_docente: number;
     horas_asignadas: number;
+    numero_grupo_general?: number;
   }) => apiClient.post('/carga-horaria/asignar', datos),
 
   obtenerResumen: (idPeriodo: number) => 
@@ -33,10 +34,11 @@ export const cargaHorariaService = {
   obtenerCiclosPorPeriodo: (idPeriodo: number) =>
     apiClient.get(`/carga-horaria/ciclos/${idPeriodo}`),
 
-  obtenerCursosPorCiclo: (idPeriodo: number, idCiclo?: number, idCurricula?: number) => {
+  obtenerCursosPorCiclo: (idPeriodo: number, idCiclo?: number, idCurricula?: number, numeroGrupoGeneral?: number) => {
     const params: any = {};
     if (idCiclo) params.id_ciclo = idCiclo;
     if (idCurricula) params.id_curricula = idCurricula;
+    if (numeroGrupoGeneral !== undefined) params.numero_grupo_general = numeroGrupoGeneral;
     return apiClient.get(`/carga-horaria/cursos/${idPeriodo}`, { params });
   },
 };

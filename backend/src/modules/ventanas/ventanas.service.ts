@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { ConfiguracionService } from '../configuracion/configuracion.service';
 import { ServicioCorreo } from '../notificaciones/servicio-correo';
 
 export class VentanasService {
@@ -45,7 +46,8 @@ export class VentanasService {
     fechaFin: string,
     horaInicio: string,
     horaFin: string,
-    duracionMinutos: number
+    duracionMinutos: number,
+    laboraSabado: boolean = true
   ) {
     const inicio = new Date(`${fechaInicio}T12:00:00Z`);
     const fin = new Date(`${fechaFin}T12:00:00Z`);
@@ -64,8 +66,8 @@ export class VentanasService {
 
     while (cursor <= fin) {
       const diaSemana = cursor.getDay();
-      // Permitir de Lunes (1) a Sábado (6). Domingo es 0.
-      if (diaSemana !== 0) {
+      // Permitir de Lunes (1) a Viernes (5), y Sábado (6) solo si laboraSabado es true
+      if (diaSemana !== 0 && (laboraSabado || diaSemana !== 6)) {
         let orden = 1;
         for (let t = franjaInicio; t + duracionMinutos <= franjaFin; t += duracionMinutos) {
           const hora_inicio = this.toHora(t);
@@ -184,7 +186,9 @@ export class VentanasService {
       mapaConfig['TIEMPO_ATENCION_VENTANA'] || '30'
     );
 
-    const slots = this.generarSlots(fechaInicio, fechaFin, horaInicio, horaFin, duracionVentana);
+    const laboraSabado = mapaConfig['LABORA_SABADO'] !== 'false';
+
+    const slots = this.generarSlots(fechaInicio, fechaFin, horaInicio, horaFin, duracionVentana, laboraSabado);
     if (slots.length < docentes.length) {
       throw new Error('No hay suficientes slots para cubrir a todos los docentes');
     }

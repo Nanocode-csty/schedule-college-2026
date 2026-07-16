@@ -89,6 +89,7 @@ export class PublicadorHorarios {
             id_periodo: idPeriodo,
             id_docente: sel.idDocente,
             id_componente: sel.idComponente,
+            numero_grupo_general: sel.numeroGrupoGeneral ?? 0,
             id_grupo: sel.idGrupo,
             id_ambiente: sel.idAmbiente || null,
             dia_semana: sel.diaSemana,
@@ -288,13 +289,13 @@ export class PublicadorHorarios {
     }
 
     // 3. Cruce de grupo (mismo grupo, mismo día/hora)
-    const crucesGrupo = await prisma.$queryRaw<Array<{ id_grupo: number; dia_semana: string; hora_inicio: string; count: number }>>`
-      SELECT id_grupo, dia_semana, hora_inicio, COUNT(*) as count
+    const crucesGrupo = await prisma.$queryRaw<Array<{ id_grupo: number; numero_grupo_general: number; dia_semana: string; hora_inicio: string; count: number }>>`
+      SELECT id_grupo, numero_grupo_general, dia_semana, hora_inicio, COUNT(*) as count
       FROM bloque_horario
       WHERE id_periodo = ${idPeriodo}
         AND id_grupo IS NOT NULL
         AND estado IN ('CONFIRMADO', 'PUBLICADO', 'BORRADOR')
-      GROUP BY id_grupo, dia_semana, hora_inicio
+      GROUP BY id_grupo, numero_grupo_general, dia_semana, hora_inicio
       HAVING COUNT(*) > 1
     `;
 
@@ -305,20 +306,20 @@ export class PublicadorHorarios {
       });
       conflictos.push({
         tipo: 'CRUCE_GRUPO',
-        descripcion: `El grupo ${grupo?.codigo} de ${grupo?.componente.oferta.curso.nombre} tiene ${cruce.count} clases el ${cruce.dia_semana} a las ${cruce.hora_inicio}`,
+        descripcion: `El grupo ${grupo?.codigo} de ${grupo?.componente.oferta.curso.nombre} (Grupo ${String.fromCharCode(65 + cruce.numero_grupo_general)}) tiene ${cruce.count} clases el ${cruce.dia_semana} a las ${cruce.hora_inicio}`,
         involucrados: [`Grupo ID ${cruce.id_grupo}`],
       });
     }
 
     // 4. Cruce de Ciclo (NUEVO: Validar que un ciclo no tenga cruces, excepto laboratorios)
-    const crucesCiclo = await prisma.$queryRaw<Array<{ id_ciclo: number; dia_semana: string; hora_inicio: string; count: number }>>`
-      SELECT o.id_ciclo, b.dia_semana, b.hora_inicio, COUNT(*) as count
+    const crucesCiclo = await prisma.$queryRaw<Array<{ id_ciclo: number; numero_grupo_general: number; dia_semana: string; hora_inicio: string; count: number }>>`
+      SELECT o.id_ciclo, b.numero_grupo_general, b.dia_semana, b.hora_inicio, COUNT(*) as count
       FROM bloque_horario b
       JOIN curso_componente c ON b.id_componente = c.id_componente
       JOIN curso_oferta o ON c.id_oferta = o.id_curso_oferta
       WHERE b.id_periodo = ${idPeriodo}
         AND b.estado IN ('CONFIRMADO', 'PUBLICADO', 'BORRADOR')
-      GROUP BY o.id_ciclo, b.dia_semana, b.hora_inicio
+      GROUP BY o.id_ciclo, b.numero_grupo_general, b.dia_semana, b.hora_inicio
       HAVING COUNT(*) > 1
     `;
 
@@ -326,6 +327,7 @@ export class PublicadorHorarios {
       const bloques = await prisma.bloque_horario.findMany({
         where: {
           id_periodo: idPeriodo,
+          numero_grupo_general: cruce.numero_grupo_general,
           dia_semana: cruce.dia_semana,
           hora_inicio: cruce.hora_inicio,
           componente: {
@@ -347,7 +349,7 @@ export class PublicadorHorarios {
       const ciclo = bloques[0]?.componente.oferta.ciclo;
       conflictos.push({
         tipo: 'CRUCE_CICLO',
-        descripcion: `El ciclo ${ciclo?.numero} tiene ${cruce.count} cursos programados el ${cruce.dia_semana} a las ${cruce.hora_inicio}`,
+        descripcion: `El ciclo ${ciclo?.numero} del Grupo ${String.fromCharCode(65 + cruce.numero_grupo_general)} tiene ${cruce.count} cursos programados el ${cruce.dia_semana} a las ${cruce.hora_inicio}`,
         involucrados: [`Ciclo ID ${cruce.id_ciclo}`],
       });
     }

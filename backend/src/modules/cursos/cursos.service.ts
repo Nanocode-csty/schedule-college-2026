@@ -28,6 +28,7 @@ export class CursosService {
       where,
       include: {
         curricula: true,
+        sede: true,
       },
       orderBy: { nombre: 'asc' },
     });
@@ -41,6 +42,7 @@ export class CursosService {
       where: { id },
       include: {
         curricula: true,
+        sede: true,
         ofertas: {
           include: {
             periodo: true,
@@ -67,13 +69,22 @@ export class CursosService {
     codigo: string;
     creditos: number;
     id_curricula?: number | null;
+    id_sede?: number | null;
   }) {
+    // Si no se proporciona id_sede, usar la sede central
+    let sedeId = datos.id_sede;
+    if (!sedeId) {
+      const sedeCentral = await prisma.sede.findFirst({ where: { tipo: 'CENTRAL', activo: true } });
+      sedeId = sedeCentral?.id ?? null;
+    }
+
     return prisma.curso.create({
       data: {
         nombre: datos.nombre,
         codigo: datos.codigo,
         creditos: datos.creditos,
         id_curricula: datos.id_curricula ?? null,
+        id_sede: sedeId,
       },
     });
   }

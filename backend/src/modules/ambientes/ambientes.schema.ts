@@ -6,6 +6,7 @@ export const crearAmbienteSchema = z.object({
   capacidad: z.number().int().min(1).default(40),
   piso: z.number().int().optional(),
   equipamiento: z.string().optional(),
+  id_sede: z.number().int().positive().optional().nullable(),
 });
 
 export const actualizarAmbienteSchema = crearAmbienteSchema.partial();
@@ -19,10 +20,10 @@ export const registroMantenimientoSchema = z.object({
 export const disponibilidadAmbienteSchema = z.object({
   disponibilidad: z.array(
     z.object({
-      diaSemana: z.enum(['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES']),
-      horaInicio: z.string().regex(/^\d{2}:\d{2}$/),
-      horaFin: z.string().regex(/^\d{2}:\d{2}$/),
+      diaSemana: z.string(),
+      horaInicio: z.string(),
+      horaFin: z.string(),
       disponible: z.boolean().default(true),
     })
-  ).min(1),
+  ).default([]),
 });

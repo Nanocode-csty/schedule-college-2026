@@ -7,6 +7,7 @@ interface MatrizProps {
     ambienteCodigo: string;
     filas: {
       horaInicio: string;
+      horaFin: string;
       celdas: {
         diaSemana: string;
         horaInicio: string;
@@ -76,8 +77,8 @@ export function MatrizDisponibilidad({ matriz, alHacerClickCelda, bloqueado = fa
           <table className="min-w-full border-collapse text-left text-xs table-fixed">
             <thead>
               <tr className="bg-gray-50/80 border-b border-gray-200">
-                <th className="border-r border-gray-200 px-2 py-3 font-semibold text-gray-500 text-center w-24">Hora</th>
-                {dias.map((dia) => (
+                <th className="border-r border-gray-200 px-2 py-3 font-semibold text-gray-500 text-center w-32">Hora</th>
+                {(matriz.filas[0]?.celdas.map((c) => c.diaSemana) || []).map((dia) => (
                   <th key={dia} className="border-r border-gray-200 px-1 py-3 font-semibold text-gray-600 text-center uppercase tracking-wider">
                     {dia}
                   </th>
@@ -86,11 +87,10 @@ export function MatrizDisponibilidad({ matriz, alHacerClickCelda, bloqueado = fa
             </thead>
             <tbody className="divide-y divide-gray-150">
               {matriz.filas.map((fila) => {
-                const horaFin = `${(parseInt(fila.horaInicio.split(':')[0]) + 1).toString().padStart(2, '0')}:00`;
                 return (
                   <tr key={fila.horaInicio} className="hover:bg-slate-50/30 transition-colors">
-                    <td className="border-r border-gray-200 px-2 py-3 text-center font-semibold bg-slate-50/50 text-gray-500 w-24">
-                      {fila.horaInicio}
+                    <td className="border-r border-gray-200 px-2 py-3 text-center font-semibold bg-slate-50/50 text-gray-500 w-32">
+                      {fila.horaInicio} - {fila.horaFin}
                     </td>
                     {fila.celdas.map((celda, idx) => {
                       const esAlmuerzo = celda.estado === 'LIBRE' && esBloqueoDeAlmuerzo(celda.horaInicio, bloqueoAlmuerzo);

@@ -41,6 +41,12 @@ import {
 import { SelectorFiltrable } from '@/components/ui/SelectorFiltrable';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
 
+// Helper functions
+const getGroupName = (num: number) => {
+  const letters = ['A', 'B', 'C', 'D'];
+  return `Grupo ${letters[num]}`;
+};
+
 const DIAS_CONSULTA = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 const HORAS_CONSULTA = Array.from({ length: 17 }, (_, index) => {
   const hora = index + 6;
@@ -63,7 +69,9 @@ export default function RegistroManualHorariosPage() {
   const queryClient = useQueryClient();
   const [docenteId, setDocenteId] = useState<number | null>(null);
   const [ambienteId, setAmbienteId] = useState<number | null>(null);
+  const [asignacionSeleccionada, setAsignacionSeleccionada] = useState<number | null>(null); // Now track idAsignacion instead of just idComponente!
   const [componenteSeleccionado, setComponenteSeleccionado] = useState<number | null>(null);
+  const [numeroGrupoGeneral, setNumeroGrupoGeneral] = useState<number>(0);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState<number | null>(null);
   const [mostrarConsultaAmbientes, setMostrarConsultaAmbientes] = useState(false);
   const [consultaDia, setConsultaDia] = useState<string>('LUNES');
@@ -110,18 +118,20 @@ export default function RegistroManualHorariosPage() {
 
   // Pre-seleccionar componente si hay progreso
   useEffect(() => {
-    if (progreso && progreso.length > 0 && componenteSeleccionado === null) {
+    if (progreso && progreso.length > 0 && asignacionSeleccionada === null) {
       const pendiente = progreso.find((p: any) => p.horasAsignadas < p.horasRequeridas) || progreso[0];
       if (pendiente) {
+        setAsignacionSeleccionada(pendiente.idAsignacion);
         setComponenteSeleccionado(pendiente.idComponente);
+        setNumeroGrupoGeneral(pendiente.numeroGrupoGeneral);
       }
     }
-  }, [progreso, componenteSeleccionado]);
+  }, [progreso, asignacionSeleccionada]);
 
   const tipoComponenteSeleccionado = useMemo(() => {
-    const registro = (progreso || []).find((p: any) => p.idComponente === componenteSeleccionado);
+    const registro = (progreso || []).find((p: any) => p.idAsignacion === asignacionSeleccionada);
     return (registro?.tipoComponente || '').toUpperCase();
-  }, [progreso, componenteSeleccionado]);
+  }, [progreso, asignacionSeleccionada]);
 
   const ambientesFiltrados = useMemo(() => {
     const lista = (ambientes || []).filter((a: any) => a.activo);
@@ -143,7 +153,7 @@ export default function RegistroManualHorariosPage() {
     }
   }, [ambientesFiltrados, ambienteId, docenteId]);
 
-  const { data: matriz, actualizarMatriz } = useDisponibilidad(ambienteId, idPeriodo, docenteId, componenteSeleccionado);
+  const { data: matriz, actualizarMatriz } = useDisponibilidad(ambienteId, idPeriodo, docenteId, componenteSeleccionado, asignacionSeleccionada, numeroGrupoGeneral);
 
   const { selecciones, seleccionarCelda, deseleccionarCelda } = useSeleccionHorario(docenteId || 0);
 
@@ -214,6 +224,13 @@ export default function RegistroManualHorariosPage() {
     }
   }, [componenteSeleccionado, gruposDisponibles]);
 
+  const alCambiarComponente = (idAsignacion: number, idComp: number) => {
+    const registro = (progreso || []).find((p: any) => p.idAsignacion === idAsignacion);
+    setAsignacionSeleccionada(idAsignacion);
+    setComponenteSeleccionado(idComp);
+    setNumeroGrupoGeneral(registro?.numeroGrupoGeneral || 0);
+  };
+
   const manejarMensajeWS = useCallback((data: any) => {
     if (data.tipo === 'celda_seleccionada' || data.tipo === 'celda_deseleccionada') {
       actualizarMatriz();
@@ -235,7 +252,7 @@ export default function RegistroManualHorariosPage() {
     }
 
     if (estado === 'LIBRE') {
-      if (!componenteSeleccionado) {
+      if (!asignacionSeleccionada || !componenteSeleccionado) {
         setMensaje({ texto: 'Selecciona primero un componente del curso.', tipo: 'error' });
         return;
       }
@@ -249,10 +266,10 @@ export default function RegistroManualHorariosPage() {
       }
 
       // Validar si ya se alcanzaron las horas requeridas
-      const registroProgreso = (progreso || []).find((p: any) => p.idComponente === componenteSeleccionado);
+      const registroProgreso = (progreso || []).find((p: any) => p.idAsignacion === asignacionSeleccionada);
       if (registroProgreso && registroProgreso.horasAsignadas >= registroProgreso.horasRequeridas) {
         setMensaje({
-          texto: `Límite de horas alcanzado para ${registroProgreso.nombreCurso}.`,
+          texto: `Límite de horas alcanzado para ${registroProgreso.nombreCurso} (${getGroupName(registroProgreso.numeroGrupoGeneral)}).`,
           tipo: 'error',
         });
         return;
@@ -281,6 +298,8 @@ export default function RegistroManualHorariosPage() {
         await seleccionarCelda({
           idDocente: docenteId,
           idComponente: componenteSeleccionado,
+          idAsignacion: asignacionSeleccionada,
+          numeroGrupoGeneral: numeroGrupoGeneral,
           idGrupo: grupoSeleccionado,
           idAmbiente: ambienteId,
           diaSemana: dia.toUpperCase(),
@@ -393,9 +412,9 @@ export default function RegistroManualHorariosPage() {
         {/* FILA SUPERIOR: SELECTORES Y CONFIGURACIÓN */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch">
           
-          {/* Tarjeta 1: Selección de Docente (3/12) */}
-          <div className="xl:col-span-3 bg-white rounded-[2.5rem] shadow-xl border border-slate-200/60 p-8 flex flex-col justify-between overflow-visible min-h-[280px]">
-            <div className="space-y-6">
+          {/* Tarjeta 1: Selección de Docente */}
+          <div className="xl:col-span-12 bg-white rounded-[2.5rem] shadow-xl border border-slate-200/60 p-8">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600 shadow-sm">
                   <User className="w-6 h-6" />
@@ -406,14 +425,16 @@ export default function RegistroManualHorariosPage() {
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="flex-1 pt-2">
                 <SelectorFiltrable
                   label=""
                   value={docenteId || 0}
                   onChange={(val) => {
                     const id = Number(val);
                     setDocenteId(id || null);
+                    setAsignacionSeleccionada(null);
                     setComponenteSeleccionado(null);
+                    setNumeroGrupoGeneral(0);
                     setGrupoSeleccionado(null);
                     setAmbienteId(null);
                   }}
@@ -424,18 +445,18 @@ export default function RegistroManualHorariosPage() {
                   placeholder="Buscar docente..."
                 />
               </div>
+
+              {docenteId && (
+                <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                  <p className="text-xs font-bold text-indigo-700">Sesión activa para registro</p>
+                </div>
+              )}
             </div>
-            
-            {docenteId && (
-              <div className="mt-4 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                <p className="text-xs font-bold text-indigo-700">Sesión activa para registro</p>
-              </div>
-            )}
           </div>
 
           {/* Tarjeta 2: Curso y Ambiente (5/12) */}
-          <div className="xl:col-span-5 bg-white rounded-[2.5rem] shadow-xl border border-slate-200/60 p-8 flex flex-col min-h-[280px]">
+          <div className="xl:col-span-7 bg-white rounded-[2.5rem] shadow-xl border border-slate-200/60 p-8 flex flex-col min-h-[320px]">
             {!docenteId ? (
               <div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-50">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
@@ -467,21 +488,21 @@ export default function RegistroManualHorariosPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-11 gap-6 flex-1">
-                  <div className="md:col-span-6 space-y-2 flex flex-col">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1">
+                  <div className="xl:col-span-7 space-y-2 flex flex-col min-h-[220px]">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Componente</p>
                     <div className="flex-1 min-h-[140px] bg-slate-50/50 rounded-2xl border border-slate-100 overflow-hidden">
                       <div className="h-full overflow-y-auto custom-scrollbar p-1">
                         <PanelSeleccionCurso
                           componentes={progreso || []}
-                          componenteSeleccionado={componenteSeleccionado}
-                          alCambiarComponente={(id) => setComponenteSeleccionado(id || null)}
+                          componenteSeleccionado={asignacionSeleccionada}
+                          alCambiarComponente={alCambiarComponente}
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="md:col-span-5 flex flex-col justify-between gap-4">
+                  <div className="xl:col-span-5 flex flex-col justify-between gap-4">
                     <div className="space-y-2">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ambiente</p>
                       <Selector
@@ -523,7 +544,7 @@ export default function RegistroManualHorariosPage() {
           </div>
 
           {/* Tarjeta 3: Progreso y Reglas (4/12) */}
-          <div className="xl:col-span-4 bg-[#0b1f3a] rounded-[2.5rem] shadow-2xl p-8 text-white flex flex-col min-h-[280px]">
+          <div className="xl:col-span-5 bg-[#0b1f3a] rounded-[2.5rem] shadow-2xl p-6 text-white flex flex-col min-h-[320px] overflow-hidden">
             {!docenteId ? (
               <div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-30">
                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center">
@@ -532,27 +553,27 @@ export default function RegistroManualHorariosPage() {
                 <p className="text-white font-bold text-sm">Validación en espera</p>
               </div>
             ) : (
-              <div className="space-y-6 flex-1 flex flex-col">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white/10 rounded-2xl shadow-inner">
-                    <Activity className="w-6 h-6 text-white" />
+              <div className="space-y-4 flex-1 flex flex-col">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/10 rounded-xl shadow-inner">
+                    <Activity className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold tracking-tight text-white">Estado</h2>
-                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Reglas de Negocio</p>
+                    <h2 className="text-lg font-bold tracking-tight text-white">Estado</h2>
+                    <p className="text-[9px] text-white/40 font-black uppercase tracking-widest">Reglas de Negocio</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
-                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col">
-                    <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-3">Progreso de Horas</p>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                <div className="grid grid-cols-1 gap-3 flex-1 min-h-0">
+                  <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex flex-col min-h-0 max-h-[140px]">
+                    <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-2">Progreso de Horas</p>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-0">
                       <IndicadorProgresoHoras progreso={progreso || []}/>
                     </div>
                   </div>
-                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col">
-                    <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-3">Alertas y Cruces</p>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                  <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex flex-col min-h-0 max-h-[140px]">
+                    <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-2">Alertas y Cruces</p>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-0">
                       <PanelValidaciones validacion={validacion || null} />
                     </div>
                   </div>

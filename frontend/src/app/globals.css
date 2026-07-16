@@ -2,4 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos base personalizados si se requieren */
+/* Estilos base personalizados para tipografía profesional */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-white text-slate-900;
+  }
+
+  h1 {
+    @apply text-3xl sm:text-4xl font-extrabold tracking-tight;
+  }
+
+  h2 {
+    @apply text-2xl font-bold tracking-tight;
+  }
+
+  h3 {
+    @apply text-xl font-semibold tracking-tight;
+  }
+
+  p {
+    @apply text-slate-700 leading-relaxed;
+  }
+}
+
+@layer utilities {
+  /* Para texto con mejor legibilidad */
+  .text-balance {
+    text-wrap: balance;
+  }
+}

@@ -10,6 +10,6 @@ export const ambientesService = {
   disponibilidadGeneral: (idPeriodo: number) =>
     apiClient.get('/ambientes/disponibilidad-general', { params: { idPeriodo } }),
   obtenerDisponibilidadDeclarada: (id: number) => apiClient.get(`/ambientes/${id}/disponibilidad-declarada`),
-  guardarDisponibilidadDeclarada: (id: number, disponibilidad: any) =>
-    apiClient.put(`/ambientes/${id}/disponibilidad-declarada`, { disponibilidad }),
+  guardarDisponibilidadDeclarada: (id: number, data: any) =>
+    apiClient.put(`/ambientes/${id}/disponibilidad-declarada`, data),
 };

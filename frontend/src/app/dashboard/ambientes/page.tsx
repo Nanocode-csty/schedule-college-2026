@@ -1,32 +1,22 @@
 'use client';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Plus, MapPin, Users, Info } from 'lucide-react';
+import { Search, Plus, MapPin, Users, Info, Edit3 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { ambientesService } from '@/services/ambientes.service';
 import { TablaDatos } from '@/components/ui/TablaDatos';
 import { Boton } from '@/components/ui/Boton';
-import { Modal } from '@/components/ui/Modal';
-import { CampoTexto } from '@/components/ui/CampoTexto';
-import { Selector } from '@/components/ui/Selector';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
 import { useAuthStore } from '@/stores/auth.store';
 import { Card, CardContent } from '@/components/ui/Card';
 
 export default function AmbientesPage() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const usuario = useAuthStore(state => state.usuario);
   const esAdmin = usuario?.rol === 'ADMINISTRADOR';
   const [buscar, setBuscar] = useState('');
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [ambienteEditando, setAmbienteEditando] = useState<any>(null);
   const [toast, setToast] = useState<{ mensaje: string; tipo: 'exito' | 'error' } | null>(null);
-  const [formulario, setFormulario] = useState({
-    codigo: '',
-    tipo: 'AULA',
-    capacidad: 40,
-    piso: '',
-    equipamiento: '',
-  });
 
   const { data: response, isLoading } = useQuery({
     queryKey: ['ambientes'],
@@ -34,34 +24,6 @@ export default function AmbientesPage() {
   });
 
   const ambientes = Array.isArray(response) ? response : response?.data || [];
-
-  const crearMutation = useMutation({
-    mutationFn: (datos: any) => ambientesService.crear(datos),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ambientes'] });
-      setModalAbierto(false);
-      setToast({ mensaje: 'Ambiente creado exitosamente', tipo: 'exito' });
-      resetFormulario();
-    },
-    onError: (error: any) => {
-      const msg = error.response?.data?.error || 'Error al crear ambiente';
-      setToast({ mensaje: msg, tipo: 'error' });
-    },
-  });
-
-  const actualizarMutation = useMutation({
-    mutationFn: ({ id, datos }: { id: number; datos: any }) => ambientesService.actualizar(id, datos),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ambientes'] });
-      setModalAbierto(false);
-      setToast({ mensaje: 'Ambiente actualizado exitosamente', tipo: 'exito' });
-      resetFormulario();
-    },
-    onError: (error: any) => {
-      const msg = error.response?.data?.error || 'Error al actualizar ambiente';
-      setToast({ mensaje: msg, tipo: 'error' });
-    },
-  });
 
   const eliminarMutation = useMutation({
     mutationFn: (id: number) => ambientesService.eliminar(id),
@@ -74,46 +36,12 @@ export default function AmbientesPage() {
     },
   });
 
-  const resetFormulario = () => {
-    setFormulario({
-      codigo: '',
-      tipo: 'AULA',
-      capacidad: 40,
-      piso: '',
-      equipamiento: '',
-    });
-    setAmbienteEditando(null);
+  const handleCrearNuevo = () => {
+    router.push('/dashboard/ambientes/nuevo');
   };
 
-  const abrirModalCrear = () => {
-    resetFormulario();
-    setModalAbierto(true);
-  };
-
-  const abrirModalEditar = (ambiente: any) => {
-    setAmbienteEditando(ambiente);
-    setFormulario({
-      codigo: ambiente.codigo,
-      tipo: ambiente.tipo,
-      capacidad: ambiente.capacidad,
-      piso: ambiente.piso?.toString() || '',
-      equipamiento: ambiente.equipamiento || '',
-    });
-    setModalAbierto(true);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const datosParaEnviar = {
-      ...formulario,
-      capacidad: parseInt(formulario.capacidad as any) || 0,
-      piso: formulario.piso ? parseInt(formulario.piso) : null,
-    };
-    if (ambienteEditando) {
-      actualizarMutation.mutate({ id: ambienteEditando.id, datos: datosParaEnviar });
-    } else {
-      crearMutation.mutate(datosParaEnviar);
-    }
+  const handleEditarAmbiente = (ambiente: any) => {
+    router.push(`/dashboard/ambientes/${ambiente.id}`);
   };
 
   const columnas = [
@@ -152,10 +80,10 @@ export default function AmbientesPage() {
       )
     },
     { 
-      clave: 'piso', 
-      titulo: 'Ubicación',
+      clave: 'sede', 
+      titulo: 'Sede',
       render: (item: any) => (
-        <span className="text-slate-600 font-medium">Piso {item.piso || 'N/A'}</span>
+        <span className="text-slate-600 font-medium">{item.sede?.nombre || 'N/A'}</span>
       )
     },
     {
@@ -208,7 +136,7 @@ export default function AmbientesPage() {
               className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-unt-primary/5 focus:border-unt-primary transition-all bg-white shadow-sm"
             />
           </div>
-          <Boton onClick={abrirModalCrear} className="rounded-2xl px-6 shadow-lg shadow-unt-primary/20">
+          <Boton onClick={handleCrearNuevo} className="rounded-2xl px-6 shadow-lg shadow-unt-primary/20">
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Ambiente
           </Boton>
@@ -221,7 +149,7 @@ export default function AmbientesPage() {
             columnas={columnas}
             datos={ambientesFiltrados}
             loading={isLoading}
-            alEditar={abrirModalEditar}
+            alEditar={handleEditarAmbiente}
             alEliminar={(ambiente) => {
               if (confirm(`¿Está seguro de desactivar el ambiente "${ambiente.codigo}"?`)) {
                 eliminarMutation.mutate(ambiente.id);
@@ -230,61 +158,6 @@ export default function AmbientesPage() {
           />
         </CardContent>
       </Card>
-
-      <Modal 
-        isOpen={modalAbierto} 
-        onClose={() => setModalAbierto(false)}
-        titulo={ambienteEditando ? 'Editar Información de Ambiente' : 'Registrar Nuevo Ambiente'}
-      >
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <CampoTexto 
-              label="Código de Ambiente" 
-              placeholder="Ej: A-101"
-              value={formulario.codigo}
-              onChange={(e) => setFormulario({ ...formulario, codigo: e.target.value })}
-              required
-            />
-            <Selector 
-              label="Tipo de Espacio" 
-              value={formulario.tipo} 
-              onChange={(e) => setFormulario({ ...formulario, tipo: e.target.value })}
-              opciones={[
-                { valor: 'AULA', etiqueta: 'Aula de Clase' },
-                { valor: 'LABORATORIO', etiqueta: 'Laboratorio Especializado' }
-              ]}
-            />
-            <CampoTexto 
-              label="Capacidad (Aforo)" 
-              type="number"
-              value={formulario.capacidad}
-              onChange={(e) => setFormulario({ ...formulario, capacidad: parseInt(e.target.value) })}
-              required
-            />
-            <CampoTexto 
-              label="Nivel / Piso" 
-              placeholder="Ej: 1"
-              value={formulario.piso}
-              onChange={(e) => setFormulario({ ...formulario, piso: e.target.value })}
-            />
-          </div>
-          <CampoTexto 
-            label="Equipamiento / Observaciones" 
-            placeholder="Ej: Proyector, Aire Acondicionado, 40 PCs..."
-            value={formulario.equipamiento}
-            onChange={(e) => setFormulario({ ...formulario, equipamiento: e.target.value })}
-          />
-
-          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
-            <Boton type="button" variant="outline" onClick={() => setModalAbierto(false)} className="rounded-xl px-6">
-              Cancelar
-            </Boton>
-            <Boton type="submit" cargando={crearMutation.isPending || actualizarMutation.isPending} className="rounded-xl px-8 shadow-md shadow-unt-primary/10">
-              {ambienteEditando ? 'Guardar Cambios' : 'Registrar Ambiente'}
-            </Boton>
-          </div>
-        </form>
-      </Modal>
 
       {toast && (
         <NotificacionToast 

@@ -6,6 +6,8 @@ export interface Curso {
   activo: boolean;
   id_curricula?: number | null;
   curricula?: { id: number; nombre: string; codigo: string; vigente: boolean } | null;
+  id_sede?: number | null;
+  sede?: { id: number; nombre: string; codigo: string; tipo: 'CENTRAL' | 'DESCONCENTRADA' } | null;
 }
 
 export interface CursoConRelaciones extends Curso {

@@ -9,6 +9,8 @@ export interface RestriccionInstitucional {
   limiteMaxAsesoriaTesis: number;  // 2 (horas)
   limiteMaxCapacitacion: number;   // 1 (hora)
   limiteMaxInvestigacion: number;  // 6 (horas)
+  laboraSabado: boolean; // true = mostrar SABADO en horarios
+  numGruposGenerales: number; // 1, 2, or 3
 }
 
 export interface DiaNoLaborable {

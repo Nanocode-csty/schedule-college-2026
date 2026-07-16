@@ -98,6 +98,7 @@ model sede {
   asignaciones_sede asignacion_sede[]
   bloques           bloque_horario[]
   periodos          periodo_academico[]
+  cursos            curso[]
 
   @@map("sede")
 }
@@ -217,6 +218,8 @@ model curso {
   activo        Boolean    @default(true)
   id_curricula  Int?
   curricula     curricula? @relation(fields: [id_curricula], references: [id])
+  id_sede       Int?
+  sede          sede?      @relation(fields: [id_sede], references: [id])
   ofertas       curso_oferta[]
 
   @@map("curso")
@@ -286,8 +289,9 @@ model asignacion_docente_componente {
   numero_alumnos  Int?
   id_registrado_por Int?
   registrado_por  usuario?       @relation("AsignacionRegistradaPor", fields: [id_registrado_por], references: [id])
+  numero_grupo_general Int @default(0) // 0: Grupo A, 1: Grupo B, 2: Grupo C
 
-  @@unique([id_componente, id_docente])
+  @@unique([id_componente, id_docente, numero_grupo_general]) // Unique per component, docente, and grupo general!
   @@map("asignacion_docente_componente")
 }
 
@@ -321,6 +325,7 @@ model bloque_horario {
   id_componente   Int
   docente         docente           @relation(fields: [id_docente], references: [id])
   id_docente      Int
+  numero_grupo_general Int          @default(0)
   ambiente        ambiente?         @relation(fields: [id_ambiente], references: [id]) // Ahora opcional
   id_ambiente     Int?              // Puede ser nulo si es una solicitud
   grupo           grupo             @relation(fields: [id_grupo], references: [id])
@@ -343,6 +348,7 @@ model bloque_horario {
   @@index([id_periodo, id_ambiente, dia_semana])
   @@index([id_periodo, id_grupo, dia_semana])
   @@index([id_periodo, id_componente])
+  @@index([id_periodo, id_componente, numero_grupo_general])
   @@map("bloque_horario")
 }
 

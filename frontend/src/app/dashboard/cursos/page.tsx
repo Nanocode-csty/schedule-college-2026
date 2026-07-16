@@ -5,9 +5,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Search, Plus, BookOpen, Hash, Layers, FileText } from 'lucide-react';
+import { Search, Plus, BookOpen, Hash, Layers, FileText, MapPin } from 'lucide-react';
 import { cursosService } from '@/services/cursos.service';
 import { curriculaService } from '@/services/curricula.service';
+import { sedesService } from '@/services/sedes.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { TablaDatos } from '@/components/ui/TablaDatos';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -22,6 +23,7 @@ const cursoSchema = z.object({
   codigo: z.string().min(1, 'El código es obligatorio'),
   creditos: z.coerce.number().int().min(1, 'Debe ser al menos 1'),
   id_curricula: z.number().int().positive().nullable().optional(),
+  id_sede: z.number().int().positive().nullable().optional(),
 });
 
 type CursoFormData = z.infer<typeof cursoSchema>;
@@ -42,7 +44,13 @@ export default function CursosPage() {
     queryFn: () => curriculaService.listar().then((res) => res.data),
   });
 
+  const { data: sedesList } = useQuery({
+    queryKey: ['sedes'],
+    queryFn: () => sedesService.listar().then((res) => res.data),
+  });
+
   const curriculaOpts = Array.isArray(curriculaList) ? curriculaList : curriculaList?.data || [];
+  const sedesOpts = Array.isArray(sedesList) ? sedesList : sedesList?.data || [];
 
   const { data: response, isLoading } = useQuery({
     queryKey: ['cursos', buscar, idCurriculaFiltro],
@@ -63,6 +71,7 @@ export default function CursosPage() {
       codigo: '',
       creditos: 1,
       id_curricula: null,
+      id_sede: null,
     },
   });
 
@@ -99,12 +108,15 @@ export default function CursosPage() {
   });
 
   const abrirCrearCurso = () => {
+    // Find the sede central to set as default
+    const sedeCentral = sedesOpts.find((s: any) => s.tipo === 'CENTRAL');
     setCursoEditando(null);
     resetCurso({
       nombre: '',
       codigo: '',
       creditos: 1,
       id_curricula: null,
+      id_sede: sedeCentral?.id ?? null,
     });
     setMostrarModalCurso(true);
   };
@@ -116,6 +128,7 @@ export default function CursosPage() {
       codigo: curso.codigo ?? '',
       creditos: curso.creditos ?? 1,
       id_curricula: curso.id_curricula ?? null,
+      id_sede: curso.id_sede ?? null,
     });
     setMostrarModalCurso(true);
   };
@@ -168,6 +181,22 @@ export default function CursosPage() {
           {item.curricula ? (
             <span className={`text-xs font-bold px-2 py-1 rounded-lg ${item.curricula.vigente ? 'bg-unt-primary/10 text-unt-primary' : 'bg-slate-100 text-slate-500'}`}>
               {item.curricula.nombre}
+            </span>
+          ) : (
+            <span className="text-xs text-slate-400 italic">Sin asignar</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      clave: 'sede',
+      titulo: 'Sede',
+      render: (item: any) => (
+        <div className="flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-slate-400" />
+          {item.sede ? (
+            <span className={`text-xs font-bold px-2 py-1 rounded-lg ${item.sede.tipo === 'CENTRAL' ? 'bg-unt-primary/10 text-unt-primary' : 'bg-slate-100 text-slate-500'}`}>
+              {item.sede.nombre}
             </span>
           ) : (
             <span className="text-xs text-slate-400 italic">Sin asignar</span>
@@ -290,6 +319,18 @@ export default function CursosPage() {
                 })))
               ]}
               {...registerCurso('id_curricula', { valueAsNumber: true })}
+            />
+            <Selector
+              label="Sede"
+              error={erroresCurso.id_sede?.message}
+              opciones={[
+                { valor: '', etiqueta: '-- Sin asignar --' },
+                ...(sedesOpts.map((s: any) => ({
+                  valor: String(s.id),
+                  etiqueta: `${s.nombre}${s.tipo === 'CENTRAL' ? ' (Sede Central)' : ' (Filial)'}`
+                })))
+              ]}
+              {...registerCurso('id_sede', { valueAsNumber: true })}
             />
           </div>
 

@@ -12,6 +12,7 @@ interface Props {
   filtroId: number | null;
   ambienteAsignacionId?: number | null;
   modo?: 'EDICION' | 'LECTURA';
+  filtroNumeroGrupoGeneral?: number | null;
 }
 
 const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
@@ -26,7 +27,7 @@ function formatearFranjaHora(horaInicio: string): string {
   return `${horaBase}:00 - ${horaFin}:00`;
 }
 
-export function CalendarioGeneral({ idPeriodo, filtroTipo, filtroId, ambienteAsignacionId = null, modo = 'EDICION' }: Props) {
+export function CalendarioGeneral({ idPeriodo, filtroTipo, filtroId, ambienteAsignacionId = null, modo = 'EDICION', filtroNumeroGrupoGeneral = null }: Props) {
   const queryClient = useQueryClient();
   const [errorToast, setErrorToast] = useState<{ mensaje: string; id: number } | null>(null);
   const [modoPruebaAforo, setModoPruebaAforo] = useState(false);
@@ -35,13 +36,16 @@ export function CalendarioGeneral({ idPeriodo, filtroTipo, filtroId, ambienteAsi
   const [dragErrorShake, setDragErrorShake] = useState<{ dia: string; hora: string } | null>(null);
 
   const { data: horarios, isLoading } = useQuery({
-    queryKey: ['horarios-general', idPeriodo, filtroTipo, filtroId, ambienteAsignacionId],
+    queryKey: ['horarios-general', idPeriodo, filtroTipo, filtroId, ambienteAsignacionId, filtroNumeroGrupoGeneral],
     queryFn: async () => {
       const params: any = { idPeriodo };
       if (filtroId) {
         if (filtroTipo === 'AULA') params.idAmbiente = filtroId;
         if (filtroTipo === 'DOCENTE') params.idDocente = filtroId;
         if (filtroTipo === 'CICLO') params.idCiclo = filtroId;
+      }
+      if (filtroNumeroGrupoGeneral !== null) {
+        params.numeroGrupoGeneral = filtroNumeroGrupoGeneral;
       }
       return horariosService.listarHorarios(params).then((res) => res.data);
     },

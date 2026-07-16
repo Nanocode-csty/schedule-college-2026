@@ -8,8 +8,8 @@ export class HorariosService {
   /**
    * Obtener la matriz de disponibilidad para un ambiente
    */
-  static async obtenerMatrizDisponibilidad(idAmbiente: number, idPeriodo: number, idDocente?: number, idComponente?: number) {
-    return GestorDisponibilidad.construirMatriz(idAmbiente, idPeriodo, idDocente, idComponente);
+  static async obtenerMatrizDisponibilidad(idAmbiente: number, idPeriodo: number, idDocente?: number, idComponente?: number, idAsignacion?: number, numeroGrupoGeneral?: number) {
+    return GestorDisponibilidad.construirMatriz(idAmbiente, idPeriodo, idDocente, idComponente, idAsignacion, numeroGrupoGeneral);
   }
 
   /**
@@ -36,6 +36,8 @@ export class HorariosService {
   static async seleccionarCelda(datos: {
     idDocente: number;
     idComponente: number;
+    idAsignacion?: number;
+    numeroGrupoGeneral?: number;
     idGrupo: number;
     idAmbiente?: number;
     modoPrueba?: boolean;
@@ -60,6 +62,8 @@ export class HorariosService {
   private static async validarDatosSeleccion(datos: {
     idDocente: number;
     idComponente: number;
+    idAsignacion?: number;
+    numeroGrupoGeneral?: number;
     idGrupo: number;
     idAmbiente?: number;
     modoPrueba?: boolean;
@@ -91,25 +95,40 @@ export class HorariosService {
     if (!grupo || !grupo.activo) throw new Error('Grupo inválido o inactivo');
     if (grupo.id_componente !== datos.idComponente) throw new Error('El grupo no corresponde al componente seleccionado');
 
-    const asignacion = await prisma.asignacion_docente_componente.findFirst({
-      where: {
-        id_docente: datos.idDocente,
-        id_componente: datos.idComponente,
-      },
-    });
+    // Find the assignment, using idAsignacion if provided, else find by id_docente, id_componente and numeroGrupoGeneral
+    let asignacion;
+    if (datos.idAsignacion) {
+      asignacion = await prisma.asignacion_docente_componente.findUnique({
+        where: { id: datos.idAsignacion }
+      });
+    } else {
+      // If we have numeroGrupoGeneral, use that!
+      asignacion = await prisma.asignacion_docente_componente.findFirst({
+        where: {
+          id_docente: datos.idDocente,
+          id_componente: datos.idComponente,
+          numero_grupo_general: datos.numeroGrupoGeneral || 0,
+        },
+      });
+    }
     if (!asignacion) {
       throw new Error('El docente no tiene asignado este componente');
     }
 
-    // Validar que no exceda las horas asignadas
+    // Validar que no exceda las horas asignadas para la asignación/grupo general actual
     const seleccionesTemporales = await this.obtenerSeleccionesTemporales(datos.idDocente);
+    const seleccionesAsignacion = seleccionesTemporales.filter(
+      (s) =>
+        (s.idAsignacion && s.idAsignacion === asignacion.id) ||
+        (!s.idAsignacion &&
+          s.idComponente === datos.idComponente &&
+          (s.numeroGrupoGeneral ?? 0) === asignacion.numero_grupo_general)
+    );
 
     // 0.1. Validar que no exceda las horas del grupo específico
     const nGrupos = componente.grupos?.length || 1;
     const horasPorGrupo = componente.horas_requeridas / nGrupos;
-    const horasGrupoSeleccionadas = seleccionesTemporales.filter(
-      (s) => s.idComponente === datos.idComponente && s.idGrupo === datos.idGrupo
-    ).length;
+    const horasGrupoSeleccionadas = seleccionesAsignacion.filter((s) => s.idGrupo === datos.idGrupo).length;
     if (horasGrupoSeleccionadas >= horasPorGrupo) {
       throw new Error(
         `No se pueden seleccionar más horas para el grupo ${grupo.codigo}. Límite del grupo: ${horasPorGrupo}h (Ya seleccionadas: ${horasGrupoSeleccionadas}h).`
@@ -120,18 +139,14 @@ export class HorariosService {
     const maxGrupos = componente.tipo === 'TEORIA' 
       ? (asignacion.horas_asignadas > 0 ? 1 : 0) 
       : Math.round(asignacion.horas_asignadas / horasPorGrupo);
-    const gruposConSelecciones = new Set(
-      seleccionesTemporales
-        .filter((s) => s.idComponente === datos.idComponente)
-        .map((s) => s.idGrupo)
-    );
+    const gruposConSelecciones = new Set(seleccionesAsignacion.map((s) => s.idGrupo));
     if (!gruposConSelecciones.has(datos.idGrupo) && gruposConSelecciones.size >= maxGrupos) {
       throw new Error(
         `Has alcanzado el límite máximo de grupos asignados para este componente (${maxGrupos} grupo(s)).`
       );
     }
 
-    const horasSeleccionadas = seleccionesTemporales.filter((s) => s.idComponente === datos.idComponente).length;
+    const horasSeleccionadas = seleccionesAsignacion.length;
     if (horasSeleccionadas >= asignacion.horas_asignadas) {
       throw new Error(
         `No se pueden seleccionar más horas para este componente. Límite: ${asignacion.horas_asignadas}h (Ya seleccionadas: ${horasSeleccionadas}h).`
@@ -177,6 +192,7 @@ export class HorariosService {
     const conflictosCiclo = await prisma.bloque_horario.findMany({
       where: {
         id_periodo: componente.oferta.id_periodo,
+        numero_grupo_general: asignacion.numero_grupo_general,
         dia_semana: datos.diaSemana,
         hora_inicio: datos.horaInicio,
         componente: {
@@ -213,7 +229,11 @@ export class HorariosService {
           include: { oferta: true },
         });
 
-        if (compSel?.oferta.id_ciclo === idCiclo && sel.idDocente !== datos.idDocente) {
+        if (
+          compSel?.oferta.id_ciclo === idCiclo &&
+          (sel.numeroGrupoGeneral ?? 0) === asignacion.numero_grupo_general &&
+          sel.idDocente !== datos.idDocente
+        ) {
           const esLabActual = componente.tipo === 'LABORATORIO';
           const esLabTemporal = compSel.tipo === 'LABORATORIO';
 
@@ -330,6 +350,8 @@ export class HorariosService {
         const grupo = await prisma.grupo.findUnique({ where: { id: sel.idGrupo } });
         return {
           ...sel,
+          idAsignacion: sel.idAsignacion,
+          numeroGrupoGeneral: sel.numeroGrupoGeneral,
           confirmado: false,
           publicado: false,
           nombreCurso: componente?.oferta?.curso?.nombre || '',
@@ -351,21 +373,33 @@ export class HorariosService {
       },
     });
 
-    const enriquecidosBD = bloquesBD.map((bloque) => ({
-      idDocente: bloque.id_docente,
-      idComponente: bloque.id_componente,
-      idGrupo: bloque.id_grupo,
-      idAmbiente: bloque.id_ambiente || undefined,
-      diaSemana: bloque.dia_semana,
-      horaInicio: bloque.hora_inicio,
-      horaFin: bloque.hora_fin,
-      sesionId: 'db',
-      confirmado: true,
-      publicado: bloque.estado === 'PUBLICADO',
-      nombreCurso: bloque.componente.oferta.curso.nombre,
-      tipoComponente: bloque.componente.tipo,
-      codigoGrupo: bloque.grupo.codigo,
-      codigoAmbiente: bloque.ambiente?.codigo || '',
+    const enriquecidosBD = await Promise.all(bloquesBD.map(async (bloque) => {
+      const asignacion = await prisma.asignacion_docente_componente.findFirst({
+        where: {
+          id_docente: bloque.id_docente,
+          id_componente: bloque.id_componente,
+          numero_grupo_general: bloque.numero_grupo_general,
+        }
+      });
+      
+      return {
+        idDocente: bloque.id_docente,
+        idComponente: bloque.id_componente,
+        idAsignacion: asignacion?.id || 0,
+        numeroGrupoGeneral: bloque.numero_grupo_general,
+        idGrupo: bloque.id_grupo,
+        idAmbiente: bloque.id_ambiente || undefined,
+        diaSemana: bloque.dia_semana,
+        horaInicio: bloque.hora_inicio,
+        horaFin: bloque.hora_fin,
+        sesionId: 'db',
+        confirmado: true,
+        publicado: bloque.estado === 'PUBLICADO',
+        nombreCurso: bloque.componente.oferta.curso.nombre,
+        tipoComponente: bloque.componente.tipo,
+        codigoGrupo: bloque.grupo.codigo,
+        codigoAmbiente: bloque.ambiente?.codigo || '',
+      };
     }));
 
     return [...enriquecidasRedis, ...enriquecidosBD];
@@ -389,13 +423,17 @@ export class HorariosService {
 
     const selecciones = await this.obtenerSeleccionesTemporales(idDocente);
 
+    // Now, each asignaciones might have multiple entries for same id_componente with different numero_grupo_general, so we need to track that
     return asignaciones.map((a) =>
     {
-      const horasAsignadas = selecciones.filter((s) => s.idComponente === a.id_componente).length;
+      // Count selecciones that match the idAsignacion (or if not available, same componente and numeroGrupoGeneral)
+      const horasAsignadas = selecciones.filter((s) => s.idAsignacion === a.id).length;
       return {
+        idAsignacion: a.id,
         idComponente: a.id_componente,
         nombreCurso: a.componente.oferta.curso.nombre,
         tipoComponente: a.componente.tipo,
+        numeroGrupoGeneral: a.numero_grupo_general,
         horasRequeridas: a.horas_asignadas,
         horasAsignadas,
       };

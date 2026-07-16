@@ -3,6 +3,8 @@ import { z } from 'zod';
 export const seleccionarCeldaSchema = z.object({
   idDocente: z.number().int().positive(),
   idComponente: z.number().int().positive(),
+  idAsignacion: z.number().int().positive().optional(),
+  numeroGrupoGeneral: z.number().int().min(0).optional(),
   idGrupo: z.number().int().positive(),
   idAmbiente: z.number().int().positive().optional(),
   idPeriodo: z.number().int().positive().optional(),

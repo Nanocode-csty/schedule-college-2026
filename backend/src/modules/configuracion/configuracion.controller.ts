@@ -17,7 +17,16 @@ export class ConfiguracionController {
   static async actualizarRestricciones(req: Request, res: Response) {
     try {
       const datos = restriccionesSchema.parse(req.body);
-      await ConfiguracionService.actualizarRestricciones(datos);
+      // Convert values to correct types for service (store
+      const datosParaServicio: Record<string, string | number> = {
+        ...datos,
+        LABORA_SABADO: datos.LABORA_SABADO !== undefined ? (datos.LABORA_SABADO ? 'true' : 'false') : undefined,
+        NUM_GRUPOS_GENERALES: datos.NUM_GRUPOS_GENERALES !== undefined ? String(datos.NUM_GRUPOS_GENERALES) : undefined,
+        // Ensure number fields are strings too
+        HORAS_MAX_DIARIAS: datos.HORAS_MAX_DIARIAS !== undefined ? String(datos.HORAS_MAX_DIARIAS) : undefined,
+        TIEMPO_ATENCION_VENTANA: datos.TIEMPO_ATENCION_VENTANA !== undefined ? String(datos.TIEMPO_ATENCION_VENTANA) : undefined,
+      };
+      await ConfiguracionService.actualizarRestricciones(datosParaServicio);
       res.json({ mensaje: 'Restricciones actualizadas' });
     } catch (error: any) {
       if (error.name === 'ZodError') {

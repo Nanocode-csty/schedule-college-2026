@@ -8,6 +8,7 @@ import { curriculaService } from '@/services/curricula.service';
 import { cargaHorariaService } from '@/services/carga-horaria.service';
 import { docentesService } from '@/services/docentes.service';
 import { cursosService } from '@/services/cursos.service';
+import { configuracionService } from '@/services/configuracion.service';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Selector } from '@/components/ui/Selector';
 import { Boton } from '@/components/ui/Boton';
@@ -15,13 +16,14 @@ import { CampoTexto } from '@/components/ui/CampoTexto';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
 import { Modal } from '@/components/ui/Modal';
 import { SelectorFiltrable } from '@/components/ui/SelectorFiltrable';
-import { Users, BookOpen, AlertCircle, Plus, Clock, GraduationCap, ArrowRight, CheckCircle2, Trash2, Edit2 } from 'lucide-react';
+import { Users, BookOpen, AlertCircle, Plus, Clock, GraduationCap, ArrowRight, CheckCircle2, Trash2, Edit2, Users2 } from 'lucide-react';
 
 export default function CargaHorariaPage() {
   const queryClient = useQueryClient();
   const [idPeriodo, setIdPeriodo] = useState<number>(0);
   const [idCiclo, setIdCiclo] = useState<number>(0); // Nuevo estado para filtro por ciclo
   const [idCurricula, setIdCurricula] = useState<number | null>(null);
+  const [grupoGeneralIndex, setGrupoGeneralIndex] = useState<number>(0); // 0: Grupo A, 1: Grupo B, etc.
   const [toast, setToast] = useState<{ mensaje: string; tipo: 'exito' | 'error' } | null>(null);
   const [modalAsignacion, setModalAsignacion] = useState(false);
   const [componenteSeleccionado, setComponenteSeleccionado] = useState<any>(null);
@@ -29,6 +31,18 @@ export default function CargaHorariaPage() {
   const [idDocente, setIdDocente] = useState<number>(0);
   const [horasAsignadas, setHorasAsignadas] = useState<number>(0);
   const [asignacionEditando, setAsignacionEditando] = useState<any>(null);
+
+  // Get restricciones to know numGruposGenerales
+  const { data: restricciones } = useQuery({
+    queryKey: ['restricciones-carga'],
+    queryFn: () => configuracionService.obtenerRestricciones().then(res => res.data),
+  });
+
+  // Helper to generate group names
+  const getGroupNames = (num: number) => {
+    const letras = ['A', 'B', 'C'];
+    return Array.from({ length: num }, (_, i) => `Grupo ${letras[i]}`);
+  };
 
   const { data: responsePeriodos } = useQuery({
     queryKey: ['periodos'],
@@ -58,8 +72,13 @@ export default function CargaHorariaPage() {
   const resumenCarga = Array.isArray(responseResumen) ? responseResumen : responseResumen?.data || [];
 
   const { data: cursosConOferta, isLoading: loadingOferta } = useQuery({
-    queryKey: ['cursos-con-oferta', idPeriodo, idCiclo, idCurricula],
-    queryFn: () => cargaHorariaService.obtenerCursosPorCiclo(idPeriodo, idCiclo > 0 ? idCiclo : undefined, idCurricula!).then(res => res.data),
+    queryKey: ['cursos-con-oferta', idPeriodo, idCiclo, idCurricula, grupoGeneralIndex],
+    queryFn: () => cargaHorariaService.obtenerCursosPorCiclo(
+      idPeriodo, 
+      idCiclo > 0 ? idCiclo : undefined, 
+      idCurricula!,
+      grupoGeneralIndex
+    ).then(res => res.data),
     enabled: idPeriodo > 0
   });
 
@@ -93,7 +112,7 @@ export default function CargaHorariaPage() {
       setToast({ mensaje: 'Carga horaria procesada correctamente', tipo: 'exito' });
       setModalAsignacion(false);
       queryClient.invalidateQueries({ queryKey: ['resumen-carga', idPeriodo] });
-      queryClient.invalidateQueries({ queryKey: ['cursos-con-oferta', idPeriodo] });
+      queryClient.invalidateQueries({ queryKey: ['cursos-con-oferta', idPeriodo, idCiclo, idCurricula, grupoGeneralIndex] });
     },
     onError: (error: any) => {
       setToast({ mensaje: error.response?.data?.error || 'Error al procesar carga', tipo: 'error' });
@@ -118,7 +137,8 @@ export default function CargaHorariaPage() {
       setHorasAsignadas(asig.horas_asignadas);
     } else {
       const horasAsignadasActual = comp.asignaciones.reduce((acc: number, a: any) => acc + a.horas_asignadas, 0);
-      const faltan = comp.horas_requeridas - horasAsignadasActual;
+      const totalRequerido = comp.horas_requeridas;
+      const faltan = totalRequerido - horasAsignadasActual;
       setAsignacionEditando(null);
       setIdDocente(0);
       setHorasAsignadas(faltan > 0 ? faltan : 0);
@@ -132,7 +152,8 @@ export default function CargaHorariaPage() {
     const payload: any = {
       id_componente: componenteSeleccionado.id,
       id_docente: Number(idDocente),
-      horas_asignadas: Math.round(Number(horasAsignadas))
+      horas_asignadas: Math.round(Number(horasAsignadas)),
+      numero_grupo_general: grupoGeneralIndex
     };
 
     mutationAsignar.mutate(payload);
@@ -153,7 +174,7 @@ export default function CargaHorariaPage() {
     
     cursosConOferta.forEach((oferta: any) => {
       oferta.componentes?.forEach((comp: any) => {
-        totalRequeridas += comp.horas_requeridas || 0;
+        totalRequeridas += (comp.horas_requeridas || 0);
         totalAsignadas += comp.asignaciones?.reduce((acc: number, asig: any) => acc + asig.horas_asignadas, 0) || 0;
       });
     });
@@ -184,7 +205,7 @@ export default function CargaHorariaPage() {
         <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
         <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-white/5 blur-2xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+        <div className="relative z-10 flex flex-col gap-8">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-xs font-bold uppercase tracking-widest text-white/90">
               <Clock className="w-3.5 h-3.5" />
@@ -196,8 +217,8 @@ export default function CargaHorariaPage() {
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-            <div className="w-full sm:w-64">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+            <div className="w-full">
               <Selector
                 label="Período Lectivo"
                 value={idPeriodo}
@@ -211,7 +232,7 @@ export default function CargaHorariaPage() {
               </Selector>
             </div>
 
-            <div className="w-full sm:w-48">
+            <div className="w-full">
               <Selector
                 label="Filtrar por Ciclo"
                 value={idCiclo}
@@ -226,7 +247,7 @@ export default function CargaHorariaPage() {
               </Selector>
             </div>
 
-            <div className="w-full sm:w-64">
+            <div className="w-full">
               <Selector
                 label="Filtrar por Currícula"
                 value={idCurricula?.toString() || ''}
@@ -238,6 +259,21 @@ export default function CargaHorariaPage() {
                 className="bg-white/20 border-white/20 text-white"
               />
             </div>
+
+            {restricciones && restricciones.numGruposGenerales > 1 && (
+              <div className="w-full">
+                <Selector
+                  label="Grupo General"
+                  value={grupoGeneralIndex}
+                  onChange={(e: any) => setGrupoGeneralIndex(Number(e.target.value))}
+                  className="bg-white/20 border-white/20 text-white"
+                >
+                  {getGroupNames(restricciones.numGruposGenerales).map((name, idx) => (
+                    <option key={idx} value={idx}>{name}</option>
+                  ))}
+                </Selector>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -305,17 +341,18 @@ export default function CargaHorariaPage() {
                     <CardContent className="p-8">
                     <div className="space-y-4">
                       {oferta.componentes.map((comp: any) => {
+                        const numGrupos = restricciones?.numGruposGenerales || 1;
                         const horasAsignadasActual = comp.asignaciones.reduce((acc: number, a: any) => acc + a.horas_asignadas, 0);
                         const totalRequerido = comp.horas_requeridas;
                         const faltan = totalRequerido - horasAsignadasActual;
-                        const nGrupos = comp.grupos?.length || 1;
-                        const hPorGrupo = totalRequerido / nGrupos;
+                        const nGruposComponentes = comp.grupos?.length || 1;
+                        const hPorGrupo = comp.horas_requeridas / nGruposComponentes;
                         
                         const gruposAsignados = horasAsignadasActual / hPorGrupo;
-                        const gruposFaltantes = nGrupos - gruposAsignados;
+                        const gruposFaltantes = nGruposComponentes - gruposAsignados;
                         
                         return (
-                          <div key={comp.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-5 rounded-[1.5rem] border border-slate-100 gap-6 hover:bg-slate-50/50 transition-colors">
+                          <div key={comp.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-5 rounded-[1.5rem] border border-slate-100 gap-6 hover:bg-slate-50/50 hover:border-unt-primary/20 transition-all duration-300 hover:shadow-md group/comp">
                             <div className="flex-1 space-y-3">
                               <div className="flex items-center flex-wrap gap-3">
                                 <span className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider ${
@@ -327,39 +364,42 @@ export default function CargaHorariaPage() {
                                   <Clock className="w-4 h-4 text-slate-400" />
                                   <span>{totalRequerido}h totales</span>
                                   <span className="text-slate-300 font-normal">|</span>
-                                  <span className="text-slate-400 font-medium">{nGrupos} {nGrupos === 1 ? 'grupo' : 'grupos'}</span>
+                                  <span className="text-slate-400 font-medium flex items-center gap-1">
+                                    <Users2 className="w-3.5 h-3.5" />
+                                    {numGrupos} {numGrupos === 1 ? 'grupo general' : 'grupos generales'}
+                                  </span>
                                 </div>
                               </div>
                               
                               <div className="flex flex-wrap gap-2">
                                 {comp.asignaciones.map((asig: any) => (
-                                  <div key={asig.id} className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-100 rounded-2xl text-xs shadow-sm hover:border-unt-primary/30 transition-colors group/asig">
-                                    <div className="w-5 h-5 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                  <div key={asig.id} className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-100 rounded-2xl text-xs shadow-sm hover:border-unt-primary/40 hover:shadow-md transition-all group/asig cursor-pointer">
+                                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-unt-primary/10 to-indigo-100 flex items-center justify-center text-[10px] font-black text-unt-primary">
                                       {asig.docente.apellidos[0]}
                                     </div>
-                                    <span className="font-bold text-slate-700">{asig.docente.apellidos}</span>
-                                    <span className="text-unt-primary font-extrabold">{asig.horas_asignadas}h</span>
+                                    <span className="font-bold text-slate-800">{asig.docente.apellidos}, {asig.docente.nombres}</span>
+                                    <span className="text-unt-primary font-extrabold text-sm">{asig.horas_asignadas}h</span>
                                     <div className="flex gap-1 ml-1 pl-2 border-l border-slate-100">
-                                      <button onClick={() => abrirModalAsignacion(comp, oferta, asig)} className="text-slate-300 hover:text-blue-500 transition-colors"><Edit2 className="w-3.5 h-3.5"/></button>
-                                      <button onClick={() => manejarEliminarAsignacion(asig.id)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5"/></button>
+                                      <button onClick={() => abrirModalAsignacion(comp, oferta, asig)} className="text-slate-400 hover:text-blue-500 hover:scale-110 transition-all"><Edit2 className="w-4 h-4"/></button>
+                                      <button onClick={() => manejarEliminarAsignacion(asig.id)} className="text-slate-400 hover:text-red-500 hover:scale-110 transition-all"><Trash2 className="w-4 h-4"/></button>
                                     </div>
                                   </div>
                                 ))}
                                 {faltan > 0 && (
-                                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50/50 text-red-600 rounded-2xl text-[11px] font-bold border border-red-100/50">
-                                    <div className="animate-pulse w-1.5 h-1.5 bg-red-500 rounded-full" />
-                                    Faltan {faltan}h {comp.tipo === 'LABORATORIO' ? `(${gruposFaltantes.toFixed(1)} grp)` : ''}
+                                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-2xl text-[11px] font-bold border border-red-200 shadow-sm">
+                                    <div className="animate-pulse w-2 h-2 bg-red-500 rounded-full" />
+                                    Faltan {faltan}h {`(${gruposFaltantes.toFixed(1)} grp)`}
                                   </div>
                                 )}
                                 {faltan <= 0 && (
-                                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-2xl text-[11px] font-bold border border-emerald-100">
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-2xl text-[11px] font-bold border border-emerald-200 shadow-sm">
+                                    <CheckCircle2 className="w-4 h-4" />
                                     Carga Completa
                                   </div>
                                 )}
                               </div>
                             </div>
-                            <Boton size="sm" variant="outline" onClick={() => abrirModalAsignacion(comp, oferta)} className="rounded-2xl border-slate-200 hover:bg-unt-primary hover:text-white hover:border-unt-primary transition-all h-12 px-6 font-bold shadow-sm">
+                            <Boton size="sm" variant="outline" onClick={() => abrirModalAsignacion(comp, oferta)} className="rounded-2xl border-slate-200 hover:bg-gradient-to-r hover:from-unt-primary hover:to-[#0f4c81] hover:text-white hover:border-transparent transition-all duration-300 h-12 px-8 font-bold shadow-sm hover:shadow-lg hover:-translate-y-0.5 group-hover/comp:shadow-md">
                               <Plus className="w-4 h-4 mr-2" /> Asignar
                             </Boton>
                           </div>
@@ -456,19 +496,49 @@ export default function CargaHorariaPage() {
                   etiqueta: `${d.apellidos}, ${d.nombres}`
                 }))}
                 placeholder="Buscar docente..."
+                disabled={!!asignacionEditando}
               />
             </div>
             <div className="md:col-span-4">
               <div className="space-y-1.5">
-                <label className="block text-sm font-bold text-gray-700 ml-1">Horas a Asignar</label>
+                <label className="block text-sm font-bold text-gray-700 ml-1 flex items-center justify-between">
+                  Horas a Asignar
+                  {componenteSeleccionado && (
+                    <span className="text-[10px] font-bold text-slate-400">
+                      Máximo: {
+                        componenteSeleccionado.horas_requeridas - 
+                        (componenteSeleccionado.asignaciones?.filter((a: any) => a.id !== asignacionEditando?.id)
+                          .reduce((acc: number, a: any) => acc + a.horas_asignadas, 0) || 0)
+                      }h
+                    </span>
+                  )}
+                </label>
                 <div className="relative">
                   <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input 
                     type="number" 
                     className="block w-full rounded-2xl border border-gray-200 pl-12 pr-4 py-4 text-gray-900 shadow-sm transition-all duration-200 focus:border-unt-primary focus:ring-4 focus:ring-unt-primary/5 focus:outline-none bg-slate-50/50 hover:bg-white"
                     value={horasAsignadas} 
-                    onChange={(e) => setHorasAsignadas(Number(e.target.value))} 
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      if (componenteSeleccionado) {
+                        const max = componenteSeleccionado.horas_requeridas - 
+                          (componenteSeleccionado.asignaciones?.filter((a: any) => a.id !== asignacionEditando?.id)
+                            .reduce((acc: number, a: any) => acc + a.horas_asignadas, 0) || 0);
+                        setHorasAsignadas(Math.max(0, Math.min(val, max)));
+                      } else {
+                        setHorasAsignadas(Math.max(0, val));
+                      }
+                    }} 
                     placeholder="0"
+                    min={0}
+                    max={
+                      componenteSeleccionado 
+                        ? componenteSeleccionado.horas_requeridas - 
+                          (componenteSeleccionado.asignaciones?.filter((a: any) => a.id !== asignacionEditando?.id)
+                            .reduce((acc: number, a: any) => acc + a.horas_asignadas, 0) || 0)
+                        : undefined
+                    }
                   />
                 </div>
               </div>

@@ -22,13 +22,20 @@ import { ConfirmacionHorario } from '@/components/horarios/ConfirmacionHorario';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
 import { ventanasService } from '@/services/ventanas.service';
 
+const getGroupName = (num: number) => {
+  const letters = ['A', 'B', 'C', 'D'];
+  return `Grupo ${letters[num]}`;
+};
+
 export default function SeleccionHorarioPage() {
   const { usuario } = useAuthStore();
   const queryClient = useQueryClient();
   const docenteId = usuario?.idDocente || 0;
 
   const [ambienteId, setAmbienteId] = useState<number | null>(null);
+  const [asignacionSeleccionada, setAsignacionSeleccionada] = useState<number | null>(null);
   const [componenteSeleccionado, setComponenteSeleccionado] = useState<number | null>(null);
+  const [numeroGrupoGeneral, setNumeroGrupoGeneral] = useState<number>(0);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState<number | null>(null);
   const [sesionId] = useState(crypto.randomUUID());
   const [mensaje, setMensaje] = useState<{ texto: string; tipo: 'success' | 'error' } | null>(null);
@@ -38,10 +45,10 @@ export default function SeleccionHorarioPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedAmbiente = localStorage.getItem('seleccion_ambienteId');
-      const savedComp = localStorage.getItem('seleccion_componenteSeleccionado');
+      const savedAsignacion = localStorage.getItem('seleccion_asignacionSeleccionada');
       const savedGrupo = localStorage.getItem('seleccion_grupoSeleccionado');
       if (savedAmbiente) setAmbienteId(parseInt(savedAmbiente));
-      if (savedComp) setComponenteSeleccionado(parseInt(savedComp));
+      if (savedAsignacion) setAsignacionSeleccionada(parseInt(savedAsignacion));
       if (savedGrupo) setGrupoSeleccionado(parseInt(savedGrupo));
     }
   }, []);
@@ -55,12 +62,12 @@ export default function SeleccionHorarioPage() {
   }, [ambienteId]);
 
   useEffect(() => {
-    if (componenteSeleccionado !== null) {
-      localStorage.setItem('seleccion_componenteSeleccionado', componenteSeleccionado.toString());
+    if (asignacionSeleccionada !== null) {
+      localStorage.setItem('seleccion_asignacionSeleccionada', asignacionSeleccionada.toString());
     } else {
-      localStorage.removeItem('seleccion_componenteSeleccionado');
+      localStorage.removeItem('seleccion_asignacionSeleccionada');
     }
-  }, [componenteSeleccionado]);
+  }, [asignacionSeleccionada]);
 
   useEffect(() => {
     if (grupoSeleccionado !== null) {
@@ -92,28 +99,40 @@ export default function SeleccionHorarioPage() {
     enabled: !!docenteId,
   });
 
+  const alCambiarComponente = (idAsignacion: number, idComp: number) => {
+    const registro = (progreso || []).find((p: any) => p.idAsignacion === idAsignacion);
+    setAsignacionSeleccionada(idAsignacion);
+    setComponenteSeleccionado(idComp);
+    setNumeroGrupoGeneral(registro?.numeroGrupoGeneral || 0);
+  };
+
   // Pre-seleccionar inteligentemente el primer componente que tenga horas pendientes o el primero
   useEffect(() => {
-    if (progreso && progreso.length > 0 && componenteSeleccionado === null) {
-      const savedComp = localStorage.getItem('seleccion_componenteSeleccionado');
-      if (savedComp) {
-        const idComp = parseInt(savedComp);
-        if (progreso.some((p: any) => p.idComponente === idComp)) {
-          setComponenteSeleccionado(idComp);
+    if (progreso && progreso.length > 0 && asignacionSeleccionada === null) {
+      const savedAsignacion = localStorage.getItem('seleccion_asignacionSeleccionada');
+      if (savedAsignacion) {
+        const idAsignacion = parseInt(savedAsignacion);
+        if (progreso.some((p: any) => p.idAsignacion === idAsignacion)) {
+          const registro = progreso.find((p: any) => p.idAsignacion === idAsignacion);
+          setAsignacionSeleccionada(idAsignacion);
+          setComponenteSeleccionado(registro.idComponente);
+          setNumeroGrupoGeneral(registro.numeroGrupoGeneral || 0);
           return;
         }
       }
       const pendiente = progreso.find((p: any) => p.horasAsignadas < p.horasRequeridas) || progreso[0];
       if (pendiente) {
+        setAsignacionSeleccionada(pendiente.idAsignacion);
         setComponenteSeleccionado(pendiente.idComponente);
+        setNumeroGrupoGeneral(pendiente.numeroGrupoGeneral || 0);
       }
     }
-  }, [progreso, componenteSeleccionado]);
+  }, [progreso, asignacionSeleccionada]);
 
   const tipoComponenteSeleccionado = useMemo(() => {
-    const registro = (progreso || []).find((p: any) => p.idComponente === componenteSeleccionado);
+    const registro = (progreso || []).find((p: any) => p.idAsignacion === asignacionSeleccionada);
     return (registro?.tipoComponente || '').toUpperCase();
-  }, [progreso, componenteSeleccionado]);
+  }, [progreso, asignacionSeleccionada]);
 
   const ambientesFiltrados = useMemo(() => {
     const lista = (ambientes || []).filter((a: any) => a.activo);
@@ -144,7 +163,7 @@ export default function SeleccionHorarioPage() {
     }
   }, [ambientesFiltrados, ambienteId]);
 
-  const { data: matriz, actualizarMatriz } = useDisponibilidad(ambienteId, idPeriodo, docenteId, componenteSeleccionado);
+  const { data: matriz, actualizarMatriz } = useDisponibilidad(ambienteId, idPeriodo, docenteId, componenteSeleccionado, asignacionSeleccionada, numeroGrupoGeneral);
 
   const { selecciones, seleccionarCelda, deseleccionarCelda } = useSeleccionHorario(docenteId);
 
@@ -211,7 +230,7 @@ export default function SeleccionHorarioPage() {
     }
 
     if (estado === 'LIBRE') {
-      if (!componenteSeleccionado) {
+      if (!asignacionSeleccionada || !componenteSeleccionado) {
         setMensaje({ texto: 'Selecciona primero un componente del curso.', tipo: 'error' });
         return;
       }
@@ -227,10 +246,10 @@ export default function SeleccionHorarioPage() {
       }
 
       // Validar si ya se alcanzaron o excedieron las horas requeridas
-      const registroProgreso = (progreso || []).find((p: any) => p.idComponente === componenteSeleccionado);
+      const registroProgreso = (progreso || []).find((p: any) => p.idAsignacion === asignacionSeleccionada);
       if (registroProgreso && registroProgreso.horasAsignadas >= registroProgreso.horasRequeridas) {
         setMensaje({
-          texto: `No puedes seleccionar más horas para ${registroProgreso.nombreCurso} (${registroProgreso.tipoComponente}). Límite alcanzado: ${registroProgreso.horasRequeridas}h.`,
+          texto: `No puedes seleccionar más horas para ${registroProgreso.nombreCurso} (${getGroupName(registroProgreso.numeroGrupoGeneral)}, ${registroProgreso.tipoComponente}). Límite alcanzado: ${registroProgreso.horasRequeridas}h.`,
           tipo: 'error',
         });
         return;
@@ -259,6 +278,8 @@ export default function SeleccionHorarioPage() {
         await seleccionarCelda({
           idDocente: docenteId,
           idComponente: componenteSeleccionado,
+          idAsignacion: asignacionSeleccionada,
+          numeroGrupoGeneral: numeroGrupoGeneral,
           idGrupo: grupoSeleccionado,
           idAmbiente: ambienteId,
           idPeriodo: idPeriodo || undefined,
@@ -422,8 +443,8 @@ export default function SeleccionHorarioPage() {
             
             <PanelSeleccionCurso
               componentes={progreso || []}
-              componenteSeleccionado={componenteSeleccionado}
-              alCambiarComponente={(id) => setComponenteSeleccionado(id || null)}
+              componenteSeleccionado={asignacionSeleccionada}
+              alCambiarComponente={alCambiarComponente}
             />
 
             {/* Selector de ambiente siempre visible para no obligar a seleccionar un componente primero */}

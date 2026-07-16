@@ -49,9 +49,18 @@ export class ValidadorHorario {
       },
     });
     for (const bloque of bloquesBD) {
+      const asignacion = await prisma.asignacion_docente_componente.findFirst({
+        where: {
+          id_docente: bloque.id_docente,
+          id_componente: bloque.id_componente,
+          numero_grupo_general: bloque.numero_grupo_general,
+        },
+      });
       seleccionesDocente.push({
         idDocente: bloque.id_docente,
+        idAsignacion: asignacion?.id || 0,
         idComponente: bloque.id_componente,
+        numeroGrupoGeneral: bloque.numero_grupo_general,
         idGrupo: bloque.id_grupo,
         idAmbiente: bloque.id_ambiente || undefined,
         diaSemana: bloque.dia_semana,
@@ -232,6 +241,7 @@ export class ValidadorHorario {
       const conflictoCiclo = await prisma.bloque_horario.findFirst({
         where: {
           id_periodo: idPeriodo,
+          numero_grupo_general: sel.numeroGrupoGeneral ?? 0,
           dia_semana: sel.diaSemana,
           hora_inicio: sel.horaInicio,
           componente: {
@@ -270,17 +280,23 @@ export class ValidadorHorario {
         ? (a.horas_asignadas > 0 ? 1 : 0) 
         : Math.round(a.horas_asignadas / horasPorGrupo);
 
-      const seleccionesComp = seleccionesDocente.filter((s) => s.idComponente === a.id_componente);
+      const seleccionesComp = seleccionesDocente.filter(
+        (s) =>
+          (s.idAsignacion && s.idAsignacion === a.id) ||
+          (!s.idAsignacion &&
+            s.idComponente === a.id_componente &&
+            (s.numeroGrupoGeneral ?? 0) === a.numero_grupo_general)
+      );
       const countSelecciones = seleccionesComp.length;
 
       if (a.horas_asignadas > 0 && countSelecciones < a.horas_asignadas) {
         advertencias.push(
-          `Faltan ${a.horas_asignadas - countSelecciones}h de ${a.componente.tipo} para ${a.componente.oferta.curso.nombre}`
+          `Faltan ${a.horas_asignadas - countSelecciones}h de ${a.componente.tipo} para ${a.componente.oferta.curso.nombre} (Grupo ${String.fromCharCode(65 + a.numero_grupo_general)})`
         );
       }
       if (a.horas_asignadas > 0 && countSelecciones > a.horas_asignadas) {
         conflictos.push(
-          `Conflicto: Se han asignado más horas de las requeridas para ${a.componente.oferta.curso.nombre} (${countSelecciones}/${a.horas_asignadas}h)`
+          `Conflicto: Se han asignado más horas de las requeridas para ${a.componente.oferta.curso.nombre} (Grupo ${String.fromCharCode(65 + a.numero_grupo_general)}) (${countSelecciones}/${a.horas_asignadas}h)`
         );
       }
 
@@ -303,7 +319,7 @@ export class ValidadorHorario {
       const uniqueGrupos = Object.keys(horasPorGrupoMap);
       if (uniqueGrupos.length > maxGrupos) {
         conflictos.push(
-          `Conflicto: Has seleccionado horarios para ${uniqueGrupos.length} grupos de ${a.componente.oferta.curso.nombre}, pero solo tienes asignados máximo ${maxGrupos} grupo(s)`
+          `Conflicto: Has seleccionado horarios para ${uniqueGrupos.length} grupos de ${a.componente.oferta.curso.nombre} (Grupo ${String.fromCharCode(65 + a.numero_grupo_general)}), pero solo tienes asignados máximo ${maxGrupos} grupo(s)`
         );
       }
     }

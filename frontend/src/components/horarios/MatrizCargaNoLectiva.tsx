@@ -17,6 +17,7 @@ interface MatrizCargaNoLectivaProps {
   matriz: {
     filas: Array<{
       horaInicio: string;
+      horaFin: string;
       celdas: Celda[];
     }>;
   };
@@ -29,8 +30,6 @@ interface MatrizCargaNoLectivaProps {
   // NUEVO
   puedeInteractuarCelda?: (celda: Celda) => boolean;
 }
-
-const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
 
 export function MatrizCargaNoLectiva({
   matriz,
@@ -48,16 +47,18 @@ export function MatrizCargaNoLectiva({
       .replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
+  const dias = matriz.filas[0]?.celdas.map((c) => c.diaSemana) || [];
+
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <table className="min-w-full border-collapse text-left text-xs">
         <thead>
           <tr className="bg-slate-50 border-b border-slate-200">
-            <th className="border-r border-slate-200 px-4 py-3 font-bold text-slate-500 text-center w-24">
+            <th className="border-r border-slate-200 px-4 py-3 font-bold text-slate-500 text-center w-32">
               Hora
             </th>
 
-            {DIAS.map((dia) => (
+            {dias.map((dia) => (
               <th
                 key={dia}
                 className="border-r border-slate-200 px-4 py-3 font-bold text-slate-600 text-center uppercase tracking-wider"
@@ -72,7 +73,7 @@ export function MatrizCargaNoLectiva({
           {matriz.filas.map((fila, idx) => (
             <tr key={idx} className="group hover:bg-slate-50/30 transition-colors">
               <td className="border-r border-slate-200 px-3 py-2 font-bold text-slate-400 text-center bg-slate-50/50">
-                {fila.horaInicio}
+                {fila.horaInicio} - {fila.horaFin}
               </td>
 
               {fila.celdas.map((celda, cIdx) => {

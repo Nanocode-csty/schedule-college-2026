@@ -7,6 +7,8 @@ export interface CeldaHorario {
 export interface SeleccionTemporal {
   idDocente: number;
   idComponente: number;
+  idAsignacion: number;
+  numeroGrupoGeneral: number;
   idGrupo: number;
   idAmbiente: number;
   modoPrueba?: boolean;
@@ -37,6 +39,7 @@ export interface MatrizDisponibilidad {
   ambienteCodigo: string;
   filas: {
     horaInicio: string;
+    horaFin: string;
     celdas: DisponibilidadCelda[];
   }[];
 }
@@ -48,9 +51,11 @@ export interface ValidacionResultado {
 }
 
 export interface ProgresoCurso {
+  idAsignacion: number;
   idComponente: number;
   nombreCurso: string;
   tipoComponente: string;
+  numeroGrupoGeneral: number;
   horasRequeridas: number;
   horasAsignadas: number;
 }

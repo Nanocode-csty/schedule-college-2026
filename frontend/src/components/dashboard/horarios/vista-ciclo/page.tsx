@@ -13,6 +13,7 @@ import { reportesService, descargarBlob } from '@/services/reportes.service';
 
 export default function VistaHorarioCicloPage() {
   const [cicloSeleccionado, setCicloSeleccionado] = useState<number | null>(null);
+  const [grupoGeneralSeleccionado, setGrupoGeneralSeleccionado] = useState<number | null>(null);
   const [descargando, setDescargando] = useState<'excel' | 'pdf' | 'excel-todo' | 'pdf-todo' | null>(null);
 
   // Obtener período activo
@@ -121,6 +122,18 @@ export default function VistaHorarioCicloPage() {
                 value={cicloSeleccionado?.toString() || ''}
                 onChange={(e) => setCicloSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
               />
+              <Selector
+                label=""
+                opciones={[
+                  { valor: '', etiqueta: '-- Todos los Grupos --' },
+                  { valor: '0', etiqueta: 'Grupo A' },
+                  { valor: '1', etiqueta: 'Grupo B' },
+                  { valor: '2', etiqueta: 'Grupo C' },
+                  { valor: '3', etiqueta: 'Grupo D' },
+                ]}
+                value={grupoGeneralSeleccionado?.toString() || ''}
+                onChange={(e) => setGrupoGeneralSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
+              />
             </div>
           </CardContent>
         </Card>
@@ -204,7 +217,8 @@ export default function VistaHorarioCicloPage() {
               idPeriodo={periodoActivo.id} 
               filtroTipo="CICLO" 
               filtroId={cicloSeleccionado} 
-              modo="LECTURA" 
+              modo="LECTURA"
+              filtroNumeroGrupoGeneral={grupoGeneralSeleccionado}
             />
           ) : (
             <div className="p-20 text-center flex flex-col items-center gap-4">

@@ -6,6 +6,7 @@ const asignarCargaSchema = z.object({
   id_componente: z.number().int().positive(),
   id_docente: z.number().int().positive(),
   horas_asignadas: z.number().int().positive(), // Forzar entero
+  numero_grupo_general: z.number().int().min(0).max(2).optional(), // Default to 0
 });
 
 const configurarOfertaSchema = z.object({
@@ -136,10 +137,11 @@ export class CargaHorariaController {
       const id_periodo = parseInt(req.params.id_periodo);
       const id_ciclo = req.query.id_ciclo ? parseInt(req.query.id_ciclo as string) : undefined;
       const id_curricula = req.query.id_curricula ? parseInt(req.query.id_curricula as string) : undefined;
+      const numero_grupo_general = req.query.numero_grupo_general ? parseInt(req.query.numero_grupo_general as string) : undefined;
       
       if (isNaN(id_periodo)) return res.status(400).json({ error: 'ID de periodo inválido' });
       
-      const cursos = await CargaHorariaService.obtenerCursosPorCiclo(id_periodo, id_ciclo, id_curricula);
+      const cursos = await CargaHorariaService.obtenerCursosPorCiclo(id_periodo, id_ciclo, id_curricula, numero_grupo_general);
       res.json(cursos);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

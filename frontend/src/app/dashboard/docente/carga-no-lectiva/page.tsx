@@ -649,7 +649,8 @@ export default function CargaNoLectivaPage() {
         return { diaSemana: dia, horaInicio: horaStr, estado: 'LIBRE' as const };
       });
       
-      filas.push({ horaInicio: horaStr, celdas });
+      const horaFinStr = `${(hora + 1).toString().padStart(2, '0')}:00`;
+      filas.push({ horaInicio: horaStr, horaFin: horaFinStr, celdas });
     }
     return { filas };
   };

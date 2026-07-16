@@ -3,22 +3,40 @@ import { cn } from '@/lib/utilidades';
 import { Book, CheckCircle2 } from 'lucide-react';
 
 interface ComponenteAsignable {
+  idAsignacion: number;
   idComponente: number;
   nombreCurso: string;
   tipoComponente: string;
+  numeroGrupoGeneral: number;
   horasRequeridas: number;
   horasAsignadas: number;
 }
 
 interface PanelSeleccionCursoProps {
   componentes: ComponenteAsignable[];
-  componenteSeleccionado: number | null;
-  alCambiarComponente: (idComponente: number) => void;
+  componenteSeleccionado: number | null; // Now this is idAsignacion? Or idComponente? Wait let's decide: let's use idAsignacion!
+  alCambiarComponente: (idAsignacion: number, idComponente: number) => void;
 }
+
+// Helper function to get group name from index
+const getGroupName = (num: number) => {
+  const letters = ['A', 'B', 'C', 'D'];
+  return `Grupo ${letters[num]}`;
+};
+
+const getGroupColor = (num: number) => {
+  const colors = [
+    { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', hover: 'hover:border-blue-300', selected: 'bg-blue-50 ring-blue-100' },
+    { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200', hover: 'hover:border-purple-300', selected: 'bg-purple-50 ring-purple-100' },
+    { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200', hover: 'hover:border-emerald-300', selected: 'bg-emerald-50 ring-emerald-100' },
+    { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', hover: 'hover:border-orange-300', selected: 'bg-orange-50 ring-orange-100' }
+  ];
+  return colors[num % colors.length];
+};
 
 export function PanelSeleccionCurso({
   componentes,
-  componenteSeleccionado,
+  componenteSeleccionado, // idAsignacion!
   alCambiarComponente,
 }: PanelSeleccionCursoProps) {
   if (!componentes || componentes.length === 0) {
@@ -32,39 +50,42 @@ export function PanelSeleccionCurso({
   return (
     <div className="flex flex-col gap-2">
       {componentes.map((comp) => {
-        const esSeleccionado = componenteSeleccionado === comp.idComponente;
+        const esSeleccionado = componenteSeleccionado === comp.idAsignacion;
         const estaCompleto = comp.horasAsignadas >= comp.horasRequeridas;
+        const colors = getGroupColor(comp.numeroGrupoGeneral);
 
         return (
           <button
-            key={comp.idComponente}
-            onClick={() => alCambiarComponente(comp.idComponente)}
+            key={comp.idAsignacion}
+            onClick={() => alCambiarComponente(comp.idAsignacion, comp.idComponente)}
             className={cn(
               'group relative flex items-center justify-between p-3 rounded-xl border transition-all duration-200 text-left',
               esSeleccionado
-                ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-100 shadow-sm'
-                : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                ? `${colors.selected} border-emerald-200 ring-2 shadow-sm`
+                : `bg-white ${colors.border} ${colors.hover}`
             )}
           >
             <div className="flex items-center gap-3 overflow-hidden">
               <div className={cn(
-                'p-2 rounded-lg transition-colors',
-                esSeleccionado ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
+                'p-2 rounded-lg transition-colors flex items-center justify-center w-8 h-8',
+                esSeleccionado ? `${colors.bg} ${colors.text}` : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
               )}>
-                <Book className="w-4 h-4" />
+                <span className="text-xs font-black">{getGroupName(comp.numeroGrupoGeneral)[getGroupName(comp.numeroGrupoGeneral).length-1]}</span>
               </div>
               <div className="flex flex-col overflow-hidden">
                 <span className={cn(
                   'text-[11px] font-bold truncate',
-                  esSeleccionado ? 'text-emerald-900' : 'text-slate-700'
+                  esSeleccionado ? colors.text : 'text-slate-700'
                 )}>
                   {comp.nombreCurso}
                 </span>
                 <span className={cn(
-                  'text-[9px] font-black uppercase tracking-widest',
-                  esSeleccionado ? 'text-emerald-600/70' : 'text-slate-400'
+                  'text-[9px] font-black uppercase tracking-widest flex items-center gap-2',
+                  esSeleccionado ? colors.text : 'text-slate-400'
                 )}>
-                  {comp.tipoComponente}
+                  <span>{getGroupName(comp.numeroGrupoGeneral)}</span>
+                  <span>•</span>
+                  <span>{comp.tipoComponente}</span>
                 </span>
               </div>
             </div>

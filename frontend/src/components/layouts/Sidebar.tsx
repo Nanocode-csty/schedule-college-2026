@@ -45,6 +45,7 @@ export function Sidebar() {
     { href: '/dashboard/periodos', etiqueta: 'Períodos Académicos', Icono: Calendar },
     { href: '/dashboard/usuarios', etiqueta: 'Cuentas de Usuario', Icono: Users },
     { href: '/dashboard/ambientes', etiqueta: 'Infraestructura/Aulas', Icono: School },
+    { href: '/dashboard/sedes', etiqueta: 'Sedes', Icono: MapPin },
     { href: '/dashboard/cursos', etiqueta: 'Catálogo de Cursos', Icono: BookOpen },
     { href: '/dashboard/curricula', etiqueta: 'Currículas', Icono: FileText },
     { href: '/dashboard/configuracion/restricciones', etiqueta: 'Reglas del Sistema', Icono: Settings },
@@ -57,6 +58,7 @@ export function Sidebar() {
     { href: '/dashboard/director/oferta-academica', etiqueta: 'Oferta Académica', Icono: GraduationCap },
     { href: '/dashboard/director/oferta-ciclos', etiqueta: 'Oferta por Ciclos', Icono: LayoutGrid },
     { href: '/dashboard/director/carga-horaria', etiqueta: 'Asignación de Carga', Icono: Clock },
+    { href: '/dashboard/director/reglas-academicas', etiqueta: 'Reglas Académicas', Icono: Settings },
   ];
 
   const enlacesSecretaria = [
@@ -92,8 +94,8 @@ export function Sidebar() {
           <School className="h-7 w-7 text-unt-primary" strokeWidth={2.5} />
         </div>
         <div className="text-center">
-          <h2 className="text-lg font-bold tracking-wide text-white">Horarios UNT</h2>
-          <p className="text-xs font-medium text-unt-accent">Esc. Ing. de Sistemas</p>
+          <h2 className="text-lg font-bold tracking-wide text-white">SCHEDULE COLLEGE</h2>
+          <p className="text-xs font-medium text-unt-accent">ROO Soluciones Digitales</p>
         </div>
       </div>
 
@@ -127,7 +129,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-white/10 p-4 text-center text-xs text-gray-400">
-        <p>Versión 1.0.0</p>
+        <p>Powered by <b>ROO Soluciones Digitales</b></p>
       </div>
     </aside>
   );

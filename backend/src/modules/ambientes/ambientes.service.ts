@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { ConfiguracionService } from '../configuracion/configuracion.service';
 
 export class AmbientesService {
   /**
@@ -9,6 +10,9 @@ export class AmbientesService {
     if (tipo) where.tipo = tipo;
     return prisma.ambiente.findMany({
       where,
+      include: {
+        sede: true,
+      },
       orderBy: { codigo: 'asc' },
     });
   }
@@ -20,6 +24,7 @@ export class AmbientesService {
     return prisma.ambiente.findUnique({
       where: { id },
       include: {
+        sede: true,
         bloques: {
           include: {
             docente: true,
@@ -50,16 +55,69 @@ export class AmbientesService {
     capacidad: number;
     piso?: number;
     equipamiento?: string;
+    id_sede?: number | null;
   }) {
-    return prisma.ambiente.create({
+    let sedeId = datos.id_sede;
+    if (!sedeId) {
+      const sedeCentral = await prisma.sede.findFirst({ where: { tipo: 'CENTRAL', activo: true } });
+      sedeId = sedeCentral?.id ?? null;
+    }
+    
+    // Get config to know the time range and if we include SABADO
+    const config = await ConfiguracionService.obtenerRestricciones();
+
+    const ambiente = await prisma.ambiente.create({
       data: {
         codigo: datos.codigo,
         tipo: datos.tipo,
         capacidad: datos.capacidad,
         piso: datos.piso,
         equipamiento: datos.equipamiento,
+        id_sede: sedeId,
       },
     });
+
+    // Generate full disponibilidad
+    const disponibilidadData: Array<{
+      dia_semana: string;
+      hora_inicio: string;
+      hora_fin: string;
+      disponible: boolean;
+    }> = [];
+    const dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+    if (config.laboraSabado) {
+      dias.push('SABADO');
+    }
+
+    const inicioHora = parseInt(config.franjaInicio.split(':')[0]);
+    const finHora = parseInt(config.franjaFin.split(':')[0]);
+
+    dias.forEach((dia) => {
+      for (let hora = inicioHora; hora < finHora; hora++) {
+        // Skip almuerzo? Wait, no, almuerzo is handled in the matriz
+        const horaInicio = `${String(hora).padStart(2, '0')}:00`;
+        const horaFin = `${String(hora + 1).padStart(2, '0')}:00`;
+        
+        disponibilidadData.push({
+          dia_semana: dia,
+          hora_inicio: horaInicio,
+          hora_fin: horaFin,
+          disponible: true,
+        });
+      }
+    });
+
+    // Create disponibilidad
+    if (disponibilidadData.length > 0) {
+      await prisma.disponibilidad_ambiente.createMany({
+        data: disponibilidadData.map((item) => ({
+          ...item,
+          id_ambiente: ambiente.id,
+        })),
+      });
+    }
+
+    return ambiente;
   }
 
   /**
@@ -109,6 +167,7 @@ export class AmbientesService {
     const ambiente = await prisma.ambiente.findUnique({
       where: { id },
       include: {
+        sede: true,
         bloques: {
           where: {
             estado: { in: ['BORRADOR', 'CONFIRMADO', 'PUBLICADO'] },
@@ -172,6 +231,7 @@ export class AmbientesService {
     const ambientes = await prisma.ambiente.findMany({
       where: { activo: true },
       include: {
+        sede: true,
         bloques: {
           where: {
             id_periodo: idPeriodo,

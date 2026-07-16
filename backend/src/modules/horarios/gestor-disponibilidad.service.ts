@@ -12,14 +12,22 @@ export class GestorDisponibilidad {
     idAmbiente: number,
     idPeriodo: number,
     idDocente?: number,
-    idComponente?: number
+    idComponente?: number,
+    idAsignacion?: number,
+    numeroGrupoGeneral?: number
   ): Promise<MatrizDisponibilidad> {
     const ambiente = await prisma.ambiente.findUnique({ where: { id: idAmbiente } });
     if (!ambiente) throw new Error('Ambiente no encontrado');
 
+    // Obtener disponibilidad declarada del ambiente
+    const disponibilidadAmbiente = await prisma.disponibilidad_ambiente.findMany({
+      where: { id_ambiente: idAmbiente },
+    });
+
     // Obtener información del ciclo y tipo si se proporciona un componente
     let idCicloReferencia: number | null = null;
     let tipoComponenteReferencia: string | null = null;
+    let numeroGrupoGeneralReferencia: number | null = null;
     if (idComponente) {
       const comp = await prisma.curso_componente.findUnique({
         where: { id: idComponente },
@@ -28,6 +36,33 @@ export class GestorDisponibilidad {
       if (comp) {
         idCicloReferencia = comp.oferta.id_ciclo;
         tipoComponenteReferencia = comp.tipo;
+      }
+      
+      // If we have idAsignacion, get the numero_grupo_general from there
+      if (idAsignacion) {
+        const asignacion = await prisma.asignacion_docente_componente.findUnique({
+          where: { id: idAsignacion }
+        });
+        if (asignacion) {
+          numeroGrupoGeneralReferencia = asignacion.numero_grupo_general;
+        }
+      } else if (numeroGrupoGeneral !== undefined) {
+        numeroGrupoGeneralReferencia = numeroGrupoGeneral;
+      } else if (idDocente) {
+        // If no idAsignacion or numeroGrupoGeneral provided, try to find from docente's assignments
+        const asignacion = await prisma.asignacion_docente_componente.findFirst({
+          where: {
+            id_docente: idDocente,
+            id_componente: idComponente
+          }
+        });
+        if (asignacion) {
+          numeroGrupoGeneralReferencia = asignacion.numero_grupo_general;
+        }
+      }
+      
+      if (numeroGrupoGeneralReferencia === null) {
+        numeroGrupoGeneralReferencia = 0; // Default to group 0 (A)
       }
     }
 
@@ -42,6 +77,7 @@ export class GestorDisponibilidad {
     const franjaFin = mapaConfig['FRANJA_FIN'] || '22:00';
     const almuerzoInicio = mapaConfig['BLOQUEO_ALMUERZO_INICIO'] || '12:00';
     const almuerzoFin = mapaConfig['BLOQUEO_ALMUERZO_FIN'] || '13:00';
+    const laboraSabado = mapaConfig['LABORA_SABADO'] !== 'false';
 
     // 1. Horarios asignados al ambiente actual
     const horariosAsignadosAmbiente = await prisma.bloque_horario.findMany({
@@ -84,11 +120,12 @@ export class GestorDisponibilidad {
         })
       : [];
 
-    // 3. Horarios del CICLO actual (si aplica, en cualquier ambiente)
-    const horariosCiclo = idCicloReferencia
+    // 3. Horarios del CICLO + GRUPO GENERAL actual (si aplica, en cualquier ambiente)
+    const horariosCiclo = idCicloReferencia && numeroGrupoGeneralReferencia !== null
       ? await prisma.bloque_horario.findMany({
           where: {
             id_periodo: idPeriodo,
+            numero_grupo_general: numeroGrupoGeneralReferencia,
             componente: {
               oferta: { id_ciclo: idCicloReferencia },
             },
@@ -117,10 +154,10 @@ export class GestorDisponibilidad {
     
     // Obtener ciclos y tipos de las selecciones temporales para validar conflictos de ciclo
     const seleccionesTemporalesCiclo: any[] = [];
-    if (idCicloReferencia) {
+    if (idCicloReferencia && numeroGrupoGeneralReferencia !== null) {
       for (const sel of todasLasSelecciones) {
         const compSel = mapaComponentesTemporales.get(sel.idComponente);
-        if (compSel?.oferta.id_ciclo === idCicloReferencia) {
+        if (compSel?.oferta.id_ciclo === idCicloReferencia && (sel.numeroGrupoGeneral ?? 0) === numeroGrupoGeneralReferencia) {
           seleccionesTemporalesCiclo.push({ 
             ...sel, 
             nombreCurso: compSel.oferta.curso.nombre,
@@ -138,10 +175,14 @@ export class GestorDisponibilidad {
       },
     });
 
-    const dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
+    let dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
+    if (laboraSabado) {
+      dias.push('SABADO');
+    }
     const horas = this.generarFranjasHorarias(franjaInicio, franjaFin);
 
     const filas = horas.map((hora) => {
+      const horaFin = `${(parseInt(hora.split(':')[0]) + 1).toString().padStart(2, '0')}:00`;
       const celdas: DisponibilidadCelda[] = dias.map((dia) => {
         // Bloqueo institucional de almuerzo (DESACTIVADO según requerimiento)
         /*
@@ -152,6 +193,17 @@ export class GestorDisponibilidad {
         // Mantenimiento
         if (mantenimientos.length > 0) {
           return { diaSemana: dia, horaInicio: hora, estado: 'OCUPADO', info: { detalle: 'Mantenimiento de ambiente' } };
+        }
+
+        // 0. Disponibilidad declarada del ambiente: solo se permite si está en la lista y disponible
+        if (disponibilidadAmbiente.length > 0) {
+          const disponible = disponibilidadAmbiente.some(
+            (d) =>
+              d.dia_semana === dia && d.hora_inicio === hora && d.disponible === true
+          );
+          if (!disponible) {
+            return { diaSemana: dia, horaInicio: hora, estado: 'OCUPADO', info: { detalle: 'Ambiente no disponible en esta franja' } };
+          }
         }
 
         // 1.0 ¿Tiene el docente carga NO Lectiva?
@@ -212,10 +264,15 @@ export class GestorDisponibilidad {
           };
         }
 
-        // 2. ¿Tiene el CICLO actual alguna clase o selección temporal en este horario? (NUEVA VALIDACIÓN)
+        // 2. ¿Tiene el CICLO + GRUPO GENERAL actual alguna clase o selección temporal en este horario? (NUEVA VALIDACIÓN)
         const bloqueCicloBD = horariosCiclo.find(
           (h) => h.dia_semana === dia && h.hora_inicio === hora
         );
+        const getGroupName = (num: number) => {
+          const letters = ['A', 'B', 'C', 'D'];
+          return `Grupo ${letters[num]}`;
+        };
+        
         if (bloqueCicloBD) {
           const esLabActual = tipoComponenteReferencia === 'LABORATORIO';
           const esLabConflicto = bloqueCicloBD.componente.tipo === 'LABORATORIO';
@@ -226,7 +283,7 @@ export class GestorDisponibilidad {
               horaInicio: hora,
               estado: 'OCUPADO',
               info: {
-                detalle: `Ciclo ${idCicloReferencia} ocupado por: ${bloqueCicloBD.componente.oferta.curso.nombre}`,
+                detalle: `Ciclo ${idCicloReferencia} ${getGroupName(numeroGrupoGeneralReferencia || 0)} ocupado por: ${bloqueCicloBD.componente.oferta.curso.nombre}`,
               },
             };
           }
@@ -246,7 +303,7 @@ export class GestorDisponibilidad {
               horaInicio: hora,
               estado: 'OCUPADO',
               info: {
-                detalle: `Ciclo ${idCicloReferencia} ocupado temporalmente por otro curso`,
+                detalle: `Ciclo ${idCicloReferencia} ${getGroupName(numeroGrupoGeneralReferencia || 0)} ocupado temporalmente por otro curso`,
               },
             };
           }
@@ -298,7 +355,7 @@ export class GestorDisponibilidad {
         // 4. Celda libre
         return { diaSemana: dia, horaInicio: hora, estado: 'LIBRE' };
       });
-      return { horaInicio: hora, celdas };
+      return { horaInicio: hora, horaFin, celdas };
     });
 
     return {

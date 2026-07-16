@@ -53,8 +53,10 @@ export class HorariosController {
         idDocente = usuario.idDocente ?? undefined;
       }
       const idComponente = req.query.idComponente ? parseInt(req.query.idComponente as string) : undefined;
+      const idAsignacion = req.query.idAsignacion ? parseInt(req.query.idAsignacion as string) : undefined;
+      const numeroGrupoGeneral = req.query.numeroGrupoGeneral ? parseInt(req.query.numeroGrupoGeneral as string) : undefined;
 
-      const matriz = await HorariosService.obtenerMatrizDisponibilidad(idAmbiente, idPeriodo, idDocente, idComponente);
+      const matriz = await HorariosService.obtenerMatrizDisponibilidad(idAmbiente, idPeriodo, idDocente, idComponente, idAsignacion, numeroGrupoGeneral);
       res.json(matriz);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -66,6 +68,8 @@ export class HorariosController {
       const datos = seleccionarCeldaSchema.parse(req.body) as {
         idDocente: number;
         idComponente: number;
+        idAsignacion?: number;
+        numeroGrupoGeneral?: number;
         idGrupo: number;
         idAmbiente: number;
         idPeriodo?: number;
@@ -245,12 +249,15 @@ export class HorariosController {
 
     static async listarHorarios(req: Request, res: Response) {
     try {
-        const { idPeriodo, idDocente, idAmbiente, idGrupo, idCiclo } = req.query;
+        const { idPeriodo, idDocente, idAmbiente, idGrupo, idCiclo, numeroGrupoGeneral } = req.query;
         const where: any = {};
         if (idPeriodo) where.id_periodo = parseInt(idPeriodo as string);
         if (idDocente) where.id_docente = parseInt(idDocente as string);
         if (idAmbiente) where.id_ambiente = parseInt(idAmbiente as string);
         if (idGrupo) where.id_grupo = parseInt(idGrupo as string);
+        if (numeroGrupoGeneral !== undefined) {
+          where.numero_grupo_general = parseInt(numeroGrupoGeneral as string);
+        }
         
         // Filtro por ciclo académico
         if (idCiclo) {

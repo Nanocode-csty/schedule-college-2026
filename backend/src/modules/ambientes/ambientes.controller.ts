@@ -50,6 +50,7 @@ export class AmbientesController {
         capacidad: number;
         piso?: number;
         equipamiento?: string;
+        id_sede?: number | null;
       };
       const ambiente = await AmbientesService.crear(datos);
       res.status(201).json(ambiente);
@@ -210,6 +211,7 @@ export class AmbientesController {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
 
+      console.log('REQ.BODY:', JSON.stringify(req.body, null, 2));
       const datos = disponibilidadAmbienteSchema.parse(req.body);
       const disponibilidad = await AmbientesService.guardarDisponibilidadDeclarada(
         id,
@@ -222,7 +224,9 @@ export class AmbientesController {
       );
       res.json(disponibilidad);
     } catch (error: any) {
+      console.error('ERROR EN guardarDisponibilidadDeclarada:', error);
       if (error.name === 'ZodError') {
+        console.error('DETALLES DEL ERROR ZOD:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
       }
       console.error('Error al guardar disponibilidad declarada:', error);
