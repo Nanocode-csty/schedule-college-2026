@@ -23,7 +23,8 @@ import {
   ArrowRight,
   ShieldCheck,
   LayoutDashboard,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 
@@ -73,9 +74,9 @@ export default function ReportesSecretariaPage() {
     enabled: !!idPeriodo,
   });
 
-  const handleDescargar = async (tipo: 'pdf' | 'excel', idDoc?: number) => {
+  const handlePreview = async (tipo: 'pdf' | 'excel', idDoc?: number) => {
     if (!idPeriodo) return;
-    const key = idDoc ? `${tipo}-${idDoc}` : `global-${tipo}`;
+    const key = idDoc ? `preview-${tipo}-${idDoc}` : `preview-global-${tipo}`;
     setDescargando(key);
     setLoadingPreview(true);
     try {
@@ -104,9 +105,9 @@ export default function ReportesSecretariaPage() {
     }
   };
 
-  const handleDescargarDia = async (tipo: 'pdf' | 'excel') => {
+  const handlePreviewDia = async (tipo: 'pdf' | 'excel') => {
     if (!idPeriodo || !diaSeleccionado) return;
-    const key = `dia-${tipo}`;
+    const key = `preview-dia-${tipo}`;
     setDescargando(key);
     setLoadingPreview(true);
     try {
@@ -121,6 +122,53 @@ export default function ReportesSecretariaPage() {
     } finally {
       setDescargando(null);
       setLoadingPreview(false);
+    }
+  };
+
+  const handleDescargar = async (tipo: 'pdf' | 'excel', idDoc?: number) => {
+    if (!idPeriodo) return;
+    const key = idDoc ? `${tipo}-${idDoc}` : `global-${tipo}`;
+    setDescargando(key);
+    try {
+      let response: any;
+      let filename: string;
+      if (idDoc) {
+        response = tipo === 'pdf'
+          ? await reportesService.pdfDocente(idDoc, idPeriodo)
+          : await reportesService.excelDocente(idDoc, idPeriodo);
+        const docente = (cargaDocentes || []).find((d: any) => d.id === idDoc);
+        const nombre = docente ? `${docente.apellidos}_${docente.nombres}` : `docente_${idDoc}`;
+        filename = `horario_${nombre}.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`;
+      } else {
+        response = tipo === 'pdf'
+          ? await reportesService.pdfGlobal(idPeriodo)
+          : await reportesService.excelGlobal(idPeriodo);
+        filename = `horarios_global.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`;
+      }
+      descargarBlob(response.data, filename);
+      setToast({ mensaje: 'Reporte descargado correctamente', tipo: 'exito' });
+    } catch (err: any) {
+      setToast({ mensaje: err.response?.data?.error || 'Error al generar reporte', tipo: 'error' });
+    } finally {
+      setDescargando(null);
+    }
+  };
+
+  const handleDescargarDia = async (tipo: 'pdf' | 'excel') => {
+    if (!idPeriodo || !diaSeleccionado) return;
+    const key = `dia-${tipo}`;
+    setDescargando(key);
+    try {
+      const response = tipo === 'pdf'
+        ? await reportesService.pdfDia(diaSeleccionado, idPeriodo)
+        : await reportesService.excelDia(diaSeleccionado, idPeriodo);
+      const filename = `auditoria_${diaSeleccionado.toLowerCase()}.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`;
+      descargarBlob(response.data, filename);
+      setToast({ mensaje: 'Reporte de auditoría generado', tipo: 'exito' });
+    } catch (err: any) {
+      setToast({ mensaje: 'Error al generar reporte de auditoría', tipo: 'error' });
+    } finally {
+      setDescargando(null);
     }
   };
 
@@ -259,6 +307,14 @@ export default function ReportesSecretariaPage() {
                 </div>
                 <div className="sm:col-span-4 flex gap-2">
                   <Boton 
+                    className="py-4 px-4 rounded-2xl shadow-sm"
+                    disabled={!idDocente || !!descargando}
+                    onClick={() => handlePreview('pdf', idDocente)}
+                    title="Vista Previa PDF"
+                  >
+                    {descargando === `preview-pdf-${idDocente}` ? <SpinnerCarga /> : <Eye className="w-5 h-5" />}
+                  </Boton>
+                  <Boton 
                     className="flex-1 py-4 rounded-2xl shadow-sm"
                     disabled={!idDocente || !!descargando}
                     onClick={() => handleDescargar('pdf', idDocente)}
@@ -323,6 +379,14 @@ export default function ReportesSecretariaPage() {
                 </div>
                 <div className="sm:col-span-4 flex gap-2">
                   <Boton 
+                    className="py-4 px-4 rounded-2xl shadow-sm bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-600 hover:text-white"
+                    disabled={!diaSeleccionado || !!descargando}
+                    onClick={() => handlePreviewDia('pdf')}
+                    title="Vista Previa PDF"
+                  >
+                    {descargando === 'preview-dia-pdf' ? <SpinnerCarga /> : <Eye className="w-5 h-5" />}
+                  </Boton>
+                  <Boton 
                     className="flex-1 py-4 rounded-2xl shadow-sm bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-600 hover:text-white"
                     disabled={!diaSeleccionado || !!descargando}
                     onClick={() => handleDescargarDia('pdf')}
@@ -359,14 +423,24 @@ export default function ReportesSecretariaPage() {
               </div>
 
               <div className="space-y-4">
-                <Boton 
-                  className="w-full py-6 rounded-2xl bg-white/10 hover:bg-white/20 border-white/10 text-white font-bold text-lg flex justify-between px-8"
-                  onClick={() => handleDescargar('pdf')}
-                  disabled={!!descargando}
-                >
-                  <span className="flex items-center gap-3"><FileText className="w-6 h-6 text-rose-400" /> PDF Global</span>
-                  <ArrowRight className="w-5 h-5 opacity-50" />
-                </Boton>
+                <div className="flex gap-2">
+                  <Boton 
+                    className="py-6 px-6 rounded-2xl bg-white/10 hover:bg-white/20 border-white/10 text-white font-bold"
+                    onClick={() => handlePreview('pdf')}
+                    disabled={!!descargando}
+                    title="Vista Previa PDF"
+                  >
+                    {descargando === 'preview-global-pdf' ? <SpinnerCarga /> : <Eye className="w-6 h-6" />}
+                  </Boton>
+                  <Boton 
+                    className="flex-1 py-6 rounded-2xl bg-white/10 hover:bg-white/20 border-white/10 text-white font-bold text-lg flex justify-between px-8"
+                    onClick={() => handleDescargar('pdf')}
+                    disabled={!!descargando}
+                  >
+                    <span className="flex items-center gap-3"><FileText className="w-6 h-6 text-rose-400" /> PDF Global</span>
+                    <ArrowRight className="w-5 h-5 opacity-50" />
+                  </Boton>
+                </div>
                 
                 <Boton 
                   className="w-full py-6 rounded-2xl bg-white/10 hover:bg-white/20 border-white/10 text-white font-bold text-lg flex justify-between px-8"
