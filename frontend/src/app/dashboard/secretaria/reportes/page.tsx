@@ -22,8 +22,10 @@ import {
   BarChart3,
   ArrowRight,
   ShieldCheck,
-  LayoutDashboard
+  LayoutDashboard,
+  X
 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 
 export default function ReportesSecretariaPage() {
   const [idPeriodo, setIdPeriodo] = useState<number | null>(null);
@@ -33,6 +35,15 @@ export default function ReportesSecretariaPage() {
   const [enviandoId, setEnviandoId] = useState<number | null>(null);
   const [modalEnviarTodos, setModalEnviarTodos] = useState(false);
   const [descargando, setDescargando] = useState<string | null>(null);
+  
+  // Estado para la vista previa
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<{
+    blob: Blob;
+    filename: string;
+    tipo: 'pdf' | 'excel';
+  } | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   const { data: periodos, isLoading: periodosLoading } = useQuery({
     queryKey: ['periodos-reportes'],
@@ -66,26 +77,30 @@ export default function ReportesSecretariaPage() {
     if (!idPeriodo) return;
     const key = idDoc ? `${tipo}-${idDoc}` : `global-${tipo}`;
     setDescargando(key);
+    setLoadingPreview(true);
     try {
       let response: any;
+      let filename: string;
       if (idDoc) {
         response = tipo === 'pdf'
           ? await reportesService.pdfDocente(idDoc, idPeriodo)
           : await reportesService.excelDocente(idDoc, idPeriodo);
         const docente = (cargaDocentes || []).find((d: any) => d.id === idDoc);
         const nombre = docente ? `${docente.apellidos}_${docente.nombres}` : `docente_${idDoc}`;
-        descargarBlob(response.data, `horario_${nombre}.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`);
+        filename = `horario_${nombre}.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`;
       } else {
         response = tipo === 'pdf'
           ? await reportesService.pdfGlobal(idPeriodo)
           : await reportesService.excelGlobal(idPeriodo);
-        descargarBlob(response.data, `horarios_global.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`);
+        filename = `horarios_global.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`;
       }
-      setToast({ mensaje: 'Reporte descargado correctamente', tipo: 'exito' });
+      setPreviewData({ blob: response.data, filename, tipo });
+      setPreviewOpen(true);
     } catch (err: any) {
       setToast({ mensaje: err.response?.data?.error || 'Error al generar reporte', tipo: 'error' });
     } finally {
       setDescargando(null);
+      setLoadingPreview(false);
     }
   };
 
@@ -93,17 +108,32 @@ export default function ReportesSecretariaPage() {
     if (!idPeriodo || !diaSeleccionado) return;
     const key = `dia-${tipo}`;
     setDescargando(key);
+    setLoadingPreview(true);
     try {
       const response = tipo === 'pdf'
         ? await reportesService.pdfDia(diaSeleccionado, idPeriodo)
         : await reportesService.excelDia(diaSeleccionado, idPeriodo);
-      descargarBlob(response.data, `auditoria_${diaSeleccionado.toLowerCase()}.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`);
-      setToast({ mensaje: 'Reporte de auditoría generado', tipo: 'exito' });
+      const filename = `auditoria_${diaSeleccionado.toLowerCase()}.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`;
+      setPreviewData({ blob: response.data, filename, tipo });
+      setPreviewOpen(true);
     } catch (err: any) {
       setToast({ mensaje: 'Error al generar reporte de auditoría', tipo: 'error' });
     } finally {
       setDescargando(null);
+      setLoadingPreview(false);
     }
+  };
+
+  const handleConfirmarDescarga = () => {
+    if (!previewData) return;
+    descargarBlob(previewData.blob, previewData.filename);
+    setToast({ mensaje: 'Reporte descargado correctamente', tipo: 'exito' });
+    setPreviewOpen(false);
+  };
+
+  const handleCancelarDescarga = () => {
+    setPreviewOpen(false);
+    setPreviewData(null);
   };
 
   const handleEnviarCorreo = async (idDoc: number) => {
@@ -409,6 +439,53 @@ export default function ReportesSecretariaPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de vista previa */}
+      <Modal
+        isOpen={previewOpen}
+        onClose={handleCancelarDescarga}
+        titulo="Vista Previa del Reporte"
+        className="max-w-5xl"
+        classNameContenido="p-4"
+      >
+        {loadingPreview ? (
+          <div className="flex items-center justify-center py-20">
+            <SpinnerCarga />
+          </div>
+        ) : previewData ? (
+          <div className="space-y-6">
+            {previewData.tipo === 'pdf' ? (
+              <iframe 
+                src={URL.createObjectURL(previewData.blob)} 
+                className="w-full h-[60vh] border rounded-2xl"
+                title="Vista Previa PDF"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-2xl border border-slate-100">
+                <FileSpreadsheet className="w-20 h-20 text-emerald-500 mb-4" />
+                <p className="text-lg font-bold text-slate-700 mb-2">Archivo Excel</p>
+                <p className="text-sm text-slate-500">Vista previa no disponible para archivos Excel</p>
+              </div>
+            )}
+            <div className="flex gap-4 justify-end pt-4">
+              <Boton
+                variante="secundario"
+                onClick={handleCancelarDescarga}
+                className="px-8 py-4 rounded-2xl font-bold"
+              >
+                Cancelar
+              </Boton>
+              <Boton
+                onClick={handleConfirmarDescarga}
+                className="px-8 py-4 rounded-2xl font-bold shadow-lg"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                Descargar
+              </Boton>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       {toast && <NotificacionToast mensaje={toast.mensaje} tipo={toast.tipo} onClose={() => setToast(null)} />}
     </div>

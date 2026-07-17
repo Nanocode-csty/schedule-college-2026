@@ -20,14 +20,15 @@ import { VistaHorarioDocente } from '@/components/horarios/VistaHorarioDocente';
 import { Selector } from '@/components/ui/Selector';
 import { SpinnerCarga } from '@/components/ui/SpinnerCarga';
 import { ConfirmacionHorario } from '@/components/horarios/ConfirmacionHorario';
-import { 
-  CheckSquare, 
-  User, 
-  School, 
-  BookOpen, 
-  Users, 
-  Clock, 
-  ShieldCheck, 
+import Link from 'next/link';
+import {
+  CheckSquare,
+  User,
+  School,
+  BookOpen,
+  Users,
+  Clock,
+  ShieldCheck,
   Calendar,
   LayoutDashboard,
   Search,
@@ -37,6 +38,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock3,
+  MapPin,
 } from 'lucide-react';
 import { SelectorFiltrable } from '@/components/ui/SelectorFiltrable';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
@@ -476,14 +478,23 @@ export default function RegistroManualHorariosPage() {
                         <h2 className="text-xl font-bold text-slate-800 tracking-tight">Curso y Ambiente</h2>
                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Configuración</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setMostrarConsultaAmbientes((actual) => !actual)}
-                        className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 transition-colors hover:bg-emerald-100"
-                      >
-                        <Building2 className="w-3.5 h-3.5" />
-                        {mostrarConsultaAmbientes ? 'Ocultar consulta' : 'Consultar disponibilidad de ambientes'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setMostrarConsultaAmbientes((actual) => !actual)}
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 transition-colors hover:bg-emerald-100"
+                        >
+                          <Building2 className="w-3.5 h-3.5" />
+                          {mostrarConsultaAmbientes ? 'Ocultar consulta' : 'Consultar disponibilidad de ambientes'}
+                        </button>
+                        <Link
+                          href="/dashboard/secretaria/ambientes"
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-700 transition-colors hover:bg-indigo-100"
+                        >
+                          <MapPin className="w-3.5 h-3.5" />
+                          Ver gestión de ambientes
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>

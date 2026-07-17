@@ -1,0 +1,5 @@
+-- RenameIndex
+ALTER INDEX "asignacion_docente_componente_id_componente_id_docente_numero_g" RENAME TO "asignacion_docente_componente_id_componente_id_docente_nume_key";
+
+-- RenameIndex
+ALTER INDEX "bloque_horario_id_periodo_id_componente_numero_grupo_general_id" RENAME TO "bloque_horario_id_periodo_id_componente_numero_grupo_genera_idx";
