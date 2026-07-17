@@ -19,12 +19,17 @@ import {
   FileText, 
   FileDown, 
   Share2, 
-  Filter 
+  Filter,
+  Eye 
 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 
 export default function VistaHorarioAulaPage() {
   const [ambienteSeleccionado, setAmbienteSeleccionado] = useState<number | null>(null);
-  const [descargando, setDescargando] = useState<'excel' | 'pdf' | 'excel-todo' | 'pdf-todo' | null>(null);
+  const [descargando, setDescargando] = useState<'excel' | 'pdf' | 'excel-todo' | 'pdf-todo' | 'preview-pdf' | 'preview-pdf-todo' | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<{ blob: Blob; filename: string; tipo: 'pdf' | 'excel' } | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   // Obtener período activo
   const { data: periodoActivo, isLoading: periodoLoading } = useQuery({
@@ -37,6 +42,35 @@ export default function VistaHorarioAulaPage() {
     queryKey: ['ambientes-activos-vista'],
     queryFn: () => ambientesService.listar().then((res) => res.data),
   });
+
+  const handlePreview = async (tipo: 'pdf', todo: boolean = false) => {
+    if (!periodoActivo) return;
+    if (!todo && !ambienteSeleccionado) return;
+
+    const key = todo ? `preview-${tipo}-todo` : `preview-${tipo}`;
+    try {
+      setDescargando(key as any);
+      setLoadingPreview(true);
+      let res;
+      let nombre;
+
+      if (todo) {
+        res = await reportesService.pdfTodosLosAmbientes(periodoActivo.id);
+        nombre = `horarios-todos-los-ambientes-${periodoActivo.nombre}.pdf`;
+      } else {
+        const amb = (ambientes || []).find((a: any) => a.id === ambienteSeleccionado);
+        res = await reportesService.pdfAmbiente(ambienteSeleccionado!, periodoActivo.id);
+        nombre = `horario-ambiente-${amb?.codigo || ambienteSeleccionado}-${periodoActivo.nombre}.pdf`;
+      }
+      setPreviewData({ blob: res.data, filename: nombre, tipo: 'pdf' });
+      setPreviewOpen(true);
+    } catch (error) {
+      console.error(`Error previsualizando ${tipo}:`, error);
+    } finally {
+      setDescargando(null);
+      setLoadingPreview(false);
+    }
+  };
 
   const exportarArchivo = async (tipo: 'excel' | 'pdf', todo: boolean = false) => {
     if (!periodoActivo) return;
@@ -67,6 +101,17 @@ export default function VistaHorarioAulaPage() {
     } finally {
       setDescargando(null);
     }
+  };
+
+  const handleConfirmarDescarga = () => {
+    if (!previewData) return;
+    descargarBlob(previewData.blob, previewData.filename);
+    setPreviewOpen(false);
+  };
+
+  const handleCancelarDescarga = () => {
+    setPreviewOpen(false);
+    setPreviewData(null);
   };
 
   if (periodoLoading) return <SpinnerCarga />;
@@ -154,6 +199,14 @@ export default function VistaHorarioAulaPage() {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Ambiente Seleccionado</p>
                 <div className="flex gap-3">
                   <Boton 
+                    className="py-4 px-4 rounded-2xl shadow-sm hover:shadow-lg transition-all"
+                    onClick={() => handlePreview('pdf')} 
+                    disabled={!ambienteSeleccionado || !!descargando}
+                    title="Vista Previa PDF"
+                  >
+                    {descargando === 'preview-pdf' ? <SpinnerCarga /> : <Eye className="w-5 h-5" />}
+                  </Boton>
+                  <Boton 
                     className="flex-1 py-4 rounded-2xl shadow-sm hover:shadow-lg transition-all"
                     onClick={() => exportarArchivo('excel')} 
                     disabled={!ambienteSeleccionado || !!descargando}
@@ -175,6 +228,15 @@ export default function VistaHorarioAulaPage() {
               <div className="space-y-3">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Reporte General de Aulas</p>
                 <div className="flex gap-3">
+                  <Boton 
+                    variante="borde"
+                    className="py-4 px-4 rounded-2xl border-slate-200 text-slate-700 font-bold hover:border-unt-primary transition-all"
+                    onClick={() => handlePreview('pdf', true)} 
+                    disabled={!!descargando}
+                    title="Vista Previa PDF"
+                  >
+                    {descargando === 'preview-pdf-todo' ? <SpinnerCarga /> : <Eye className="w-5 h-5" />}
+                  </Boton>
                   <Boton 
                     variante="borde"
                     className="flex-1 py-4 rounded-2xl border-slate-200 text-slate-700 font-bold hover:border-unt-primary transition-all"
@@ -228,6 +290,53 @@ export default function VistaHorarioAulaPage() {
           )}
         </div>
       )}
+
+      {/* Modal de vista previa */}
+      <Modal
+        isOpen={previewOpen}
+        onClose={handleCancelarDescarga}
+        titulo="Vista Previa del Reporte"
+        className="max-w-5xl"
+        classNameContenido="p-4"
+      >
+        {loadingPreview ? (
+          <div className="flex items-center justify-center py-20">
+            <SpinnerCarga />
+          </div>
+        ) : previewData ? (
+          <div className="space-y-6">
+            {previewData.tipo === 'pdf' ? (
+              <iframe
+                src={URL.createObjectURL(previewData.blob)}
+                className="w-full h-[60vh] border rounded-2xl"
+                title="Vista Previa PDF"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-2xl border border-slate-100">
+                <FileSpreadsheet className="w-20 h-20 text-emerald-500 mb-4" />
+                <p className="text-lg font-bold text-slate-700 mb-2">Archivo Excel</p>
+                <p className="text-sm text-slate-500">Vista previa no disponible para archivos Excel</p>
+              </div>
+            )}
+            <div className="flex gap-4 justify-end pt-4">
+              <Boton
+                variante="secundario"
+                onClick={handleCancelarDescarga}
+                className="px-8 py-4 rounded-2xl font-bold"
+              >
+                Cancelar
+              </Boton>
+              <Boton
+                onClick={handleConfirmarDescarga}
+                className="px-8 py-4 rounded-2xl font-bold shadow-lg"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                Descargar
+              </Boton>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }
