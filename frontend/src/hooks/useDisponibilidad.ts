@@ -1,7 +1,9 @@
 'use client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { horariosService } from '@/services/horarios.service';
 import { useRef } from 'react';
+import type { MatrizDisponibilidadResponse } from '@/types/horarios';
+import type { UseQueryResult } from '@tanstack/react-query';
 
 export function useDisponibilidad(
   ambienteId: number | null,
@@ -10,7 +12,7 @@ export function useDisponibilidad(
   componenteId?: number | null,
   idAsignacion?: number | null,
   numeroGrupoGeneral?: number
-) {
+): UseQueryResult<MatrizDisponibilidadResponse, Error> & { actualizarMatriz: () => void } {
   const queryClient = useQueryClient();
 
   // Guardamos los parámetros de componente en una ref para que el queryFn
@@ -23,22 +25,23 @@ export function useDisponibilidad(
   // La matriz siempre muestra TODOS los bloques del docente en ese ambiente.
   const BASE_KEY = ['matriz-disponibilidad', ambienteId, idPeriodo, docenteId];
 
-  const query = useQuery({
+  const query = useQuery<MatrizDisponibilidadResponse, Error>({
     queryKey: BASE_KEY,
-    queryFn: () =>
-      horariosService
-        .obtenerMatriz(
-          ambienteId!,
-          idPeriodo,
-          docenteId || undefined,
-          paramsRef.current.componenteId || undefined,
-          paramsRef.current.idAsignacion || undefined,
-          paramsRef.current.numeroGrupoGeneral
-        )
-        .then((res) => res.data),
+    queryFn: async () => {
+      const response = await horariosService.obtenerMatriz(
+        ambienteId!,
+        idPeriodo,
+        docenteId || undefined,
+        paramsRef.current.componenteId || undefined,
+        paramsRef.current.idAsignacion || undefined,
+        paramsRef.current.numeroGrupoGeneral
+      );
+
+      return response.data;
+    },
     enabled: !!ambienteId && !!idPeriodo,
     // Mantener datos previos mientras se refetch para evitar parpadeos
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     // No re-fetchar automáticamente por cambio de parámetros (lo hacemos manualmente)
     staleTime: 30 * 1000,
   });
