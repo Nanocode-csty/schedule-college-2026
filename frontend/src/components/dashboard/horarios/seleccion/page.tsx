@@ -104,6 +104,7 @@ export default function SeleccionHorarioPage() {
     setAsignacionSeleccionada(idAsignacion);
     setComponenteSeleccionado(idComp);
     setNumeroGrupoGeneral(registro?.numeroGrupoGeneral || 0);
+    setTimeout(() => actualizarMatriz(), 0);
   };
 
   // Pre-seleccionar inteligentemente el primer componente que tenga horas pendientes o el primero
@@ -445,6 +446,7 @@ export default function SeleccionHorarioPage() {
               componentes={progreso || []}
               componenteSeleccionado={asignacionSeleccionada}
               alCambiarComponente={alCambiarComponente}
+              numSeccionesGenerales={(restricciones?.franjaInicio ? restricciones : restricciones?.data)?.numGruposGenerales || 1}
             />
 
             {/* Selector de ambiente siempre visible para no obligar a seleccionar un componente primero */}

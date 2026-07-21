@@ -344,7 +344,7 @@ export class HorariosService {
       seleccionesRedis.map(async (sel) => {
         const componente = await prisma.curso_componente.findUnique({
           where: { id: sel.idComponente },
-          include: { oferta: { include: { curso: true } } },
+          include: { oferta: { include: { curso: true, ciclo: true } } },
         });
         const ambiente = await prisma.ambiente.findUnique({ where: { id: sel.idAmbiente } });
         const grupo = await prisma.grupo.findUnique({ where: { id: sel.idGrupo } });
@@ -355,6 +355,7 @@ export class HorariosService {
           confirmado: false,
           publicado: false,
           nombreCurso: componente?.oferta?.curso?.nombre || '',
+          ciclo: componente?.oferta?.ciclo?.numero ?? null,
           tipoComponente: componente?.tipo || '',
           codigoGrupo: grupo?.codigo || '',
           codigoAmbiente: ambiente?.codigo || '',
@@ -367,7 +368,7 @@ export class HorariosService {
         id_docente: idDocente,
       },
       include: {
-        componente: { include: { oferta: { include: { curso: true } } } },
+        componente: { include: { oferta: { include: { curso: true, ciclo: true } } } },
         ambiente: true,
         grupo: true,
       },
@@ -396,6 +397,7 @@ export class HorariosService {
         confirmado: true,
         publicado: bloque.estado === 'PUBLICADO',
         nombreCurso: bloque.componente.oferta.curso.nombre,
+        ciclo: bloque.componente.oferta.ciclo?.numero ?? null,
         tipoComponente: bloque.componente.tipo,
         codigoGrupo: bloque.grupo.codigo,
         codigoAmbiente: bloque.ambiente?.codigo || '',
@@ -418,7 +420,7 @@ export class HorariosService {
   static async obtenerProgreso(idDocente: number) {
     const asignaciones = await prisma.asignacion_docente_componente.findMany({
       where: { id_docente: idDocente },
-      include: { componente: { include: { oferta: { include: { curso: true } } } } },
+      include: { componente: { include: { oferta: { include: { curso: true, ciclo: true } } } } },
     });
 
     const selecciones = await this.obtenerSeleccionesTemporales(idDocente);
@@ -432,6 +434,7 @@ export class HorariosService {
         idAsignacion: a.id,
         idComponente: a.id_componente,
         nombreCurso: a.componente.oferta.curso.nombre,
+        ciclo: a.componente.oferta.ciclo.numero,
         tipoComponente: a.componente.tipo,
         numeroGrupoGeneral: a.numero_grupo_general,
         horasRequeridas: a.horas_asignadas,

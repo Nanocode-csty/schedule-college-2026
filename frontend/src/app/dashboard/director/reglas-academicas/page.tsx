@@ -70,7 +70,7 @@ export default function ReglasAcademicasPage() {
   // Helper function to generate group names
   const getGroupNames = (num: number) => {
     const letras = ['A', 'B', 'C'];
-    return Array.from({ length: num }, (_, i) => `Grupo ${letras[i]}`);
+    return Array.from({ length: num }, (_, i) => `Sección ${letras[i]}`);
   };
 
   if (isLoading) return <SpinnerCarga />;
@@ -92,7 +92,7 @@ export default function ReglasAcademicasPage() {
             </div>
             <h1 className="text-4xl font-extrabold tracking-tight">Reglas Académicas</h1>
             <p className="text-lg text-white/70 max-w-2xl">
-              Define la cantidad de grupos generales por promoción y ajusta la distribución de la carga horaria.
+              Define la cantidad de secciones generales por promoción y ajusta la distribución de la carga horaria.
             </p>
           </div>
         </div>
@@ -116,19 +116,19 @@ export default function ReglasAcademicasPage() {
                     name="NUM_GRUPOS_GENERALES"
                     render={({ field }) => (
                       <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-800 ml-1">Número de Grupos Generales</label>
+                        <label className="block text-sm font-bold text-slate-800 ml-1">Número de Secciones Generales</label>
                         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
                           <Selector
                             value={field.value}
                             onChange={(e: any) => field.onChange(Number(e.target.value))}
                             className="mt-0 border-slate-200 bg-white"
                           >
-                            <option value={1}>1 Grupo General</option>
-                            <option value={2}>2 Grupos Generales</option>
-                            <option value={3}>3 Grupos Generales</option>
+                            <option value={1}>1 Sección General</option>
+                            <option value={2}>2 Secciones Generales</option>
+                            <option value={3}>3 Secciones Generales</option>
                           </Selector>
                           <p className="text-xs text-slate-500 mt-3 font-medium">
-                            Máximo 3 grupos por promoción.
+                            Máximo 3 secciones por promoción.
                           </p>
                         </div>
                       </div>
@@ -138,12 +138,12 @@ export default function ReglasAcademicasPage() {
 
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="block text-sm font-bold text-slate-800 ml-1">Grupos Generados</label>
+                    <label className="block text-sm font-bold text-slate-800 ml-1">Secciones Generadas</label>
                     <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
                       <div className="flex items-center gap-2 mb-4">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-                          Grupos Disponibles
+                          Secciones Disponibles
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-3">
@@ -185,23 +185,23 @@ export default function ReglasAcademicasPage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
-              <h4 className="font-bold text-indigo-800 mb-2">¿Qué son los Grupos Generales?</h4>
+              <h4 className="font-bold text-indigo-800 mb-2">¿Qué son las Secciones Generales?</h4>
               <p className="text-indigo-700">
-                Son grupos de estudiantes de la misma promoción que toman los mismos cursos con diferentes docentes.
+                Son secciones de estudiantes de la misma promoción que toman los mismos cursos con diferentes docentes.
               </p>
             </div>
             
             <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
               <h4 className="font-bold text-amber-800 mb-2">Carga Horaria Aumentada</h4>
               <p className="text-amber-700">
-                Si hay {numGruposValue} grupos, la carga horaria requerida por componente se multiplica por {numGruposValue}.
+                Si hay {numGruposValue} secciones, la carga horaria requerida por componente se multiplica por {numGruposValue}.
               </p>
             </div>
             
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
               <h4 className="font-bold text-slate-800 mb-2">Ejemplo</h4>
               <p className="text-slate-700">
-                Si Matemáticas requiere 4 horas teóricas y hay {numGruposValue} grupos:{' '}
+                Si Matemáticas requiere 4 horas teóricas y hay {numGruposValue} secciones:{' '}
                 <span className="font-bold text-slate-900">
                   {4 * Number(numGruposValue)}h totales
                 </span>

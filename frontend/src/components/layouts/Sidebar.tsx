@@ -34,7 +34,7 @@ export function Sidebar() {
   const esSecretaria = usuario?.rol === 'SECRETARIA';
 
   const rutaActiva = (href: string) => {
-    if (href === '/dashboard' || href === '/dashboard/admin') {
+    if (['/dashboard', '/dashboard/admin', '/dashboard/secretaria', '/dashboard/director', '/dashboard/docente'].includes(href)) {
       return pathname === href;
     }
     return pathname === href || pathname.startsWith(`${href}/`);
