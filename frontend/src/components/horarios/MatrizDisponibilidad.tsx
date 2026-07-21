@@ -1,33 +1,9 @@
 'use client';
 import { cn } from '@/lib/utilidades';
+import type { MatrizDisponibilidadResponse } from '@/types/horarios';
 
 interface MatrizProps {
-  matriz: {
-    ambienteId: number;
-    ambienteCodigo: string;
-    filas: {
-      horaInicio: string;
-      horaFin: string;
-      celdas: {
-        diaSemana: string;
-        horaInicio: string;
-        estado: string;
-        info?: {
-          idAmbiente?: number;
-          curso?: string;
-          tipoComponente?: string;
-          grupo?: string;
-          seccion?: string;
-          ciclo?: number | null;
-          ambienteCodigo?: string;
-          detalle?: string;
-          confirmado?: boolean;
-          estadoBloque?: string;
-          sesionId?: string;
-        };
-      }[];
-    }[];
-  } | null;
+  matriz: MatrizDisponibilidadResponse | null;
   alHacerClickCelda: (dia: string, hora: string, estado: string, info?: any) => void;
   bloqueado?: boolean;
   bloqueoAlmuerzo?: {
