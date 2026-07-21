@@ -276,6 +276,7 @@ export function CalendarioGeneral({ idPeriodo, filtroTipo, filtroId, ambienteAsi
                             clase.grupo?.codigo ||
                             clase.grupo?.codigo_grupo ||
                             'G';
+                          const seccionLetra = ['A', 'B', 'C'][clase.numero_grupo_general ?? 0] || 'A';
 
                           return (
                             <div
@@ -293,7 +294,7 @@ export function CalendarioGeneral({ idPeriodo, filtroTipo, filtroId, ambienteAsi
                                 {cursoNombre}
                               </div>
                               <div className="text-[8.5px] font-semibold text-slate-500 mt-1 leading-none">
-                                {tipoComponente} {tipoComponente && '•'} Gr. {grupoCodigo}
+                                {tipoComponente} {tipoComponente && '•'} Sec. {seccionLetra} {tipoComponente === 'LABORATORIO' ? `• Gr. ${grupoCodigo}` : ''}
                               </div>
                               <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-black/5 text-[9px] opacity-80 font-medium">
                                 {filtroTipo === 'AULA' ? (

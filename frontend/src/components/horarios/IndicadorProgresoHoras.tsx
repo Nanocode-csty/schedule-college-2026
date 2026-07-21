@@ -10,12 +10,14 @@ interface ProgresoCurso {
 
 interface IndicadorProgresoHorasProps {
   progreso: ProgresoCurso[];
+  numSeccionesGenerales?: number;
 }
 
 // Helper functions
-const getGroupName = (num: number) => {
+const getGroupName = (num: number, numSeccionesGenerales: number = 1) => {
+  if (numSeccionesGenerales === 1) return '';
   const letters = ['A', 'B', 'C', 'D'];
-  return `Grupo ${letters[num]}`;
+  return `SECCIÓN ${letters[num]}`;
 };
 
 const getGroupColor = (num: number) => {
@@ -28,24 +30,25 @@ const getGroupColor = (num: number) => {
   return colors[num % colors.length];
 };
 
-export function IndicadorProgresoHoras({ progreso }: IndicadorProgresoHorasProps) {
+export function IndicadorProgresoHoras({ progreso, numSeccionesGenerales = 1 }: IndicadorProgresoHorasProps) {
   return (
     <div className="space-y-4">
       {progreso.map((item, idx) => {
         const porcentaje = item.horasRequeridas > 0 ? Math.min(Math.round((item.horasAsignadas / item.horasRequeridas) * 100), 100) : 0;
         const estaCompleto = item.horasAsignadas >= item.horasRequeridas;
         const colors = getGroupColor(item.numeroGrupoGeneral);
+        const sectionName = getGroupName(item.numeroGrupoGeneral, numSeccionesGenerales);
         
         return (
           <div key={item.idAsignacion} className="space-y-1.5">
             <div className="flex justify-between items-center px-0.5">
               <div className="flex flex-col">
-                <span className="text-[11px] font-medium text-slate-800 leading-tight truncate max-w-[140px]">
+                <span className="text-[11px] font-medium text-slate-800 leading-tight truncate max-w-[140px]" title={item.nombreCurso}>
                   {item.nombreCurso}
                 </span>
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <span>{getGroupName(item.numeroGrupoGeneral)}</span>
-                  <span>•</span>
+                  {sectionName && <span>{sectionName}</span>}
+                  {sectionName && <span>•</span>}
                   <span>{item.tipoComponente}</span>
                 </span>
               </div>

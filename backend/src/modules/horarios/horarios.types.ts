@@ -28,6 +28,7 @@ export interface DisponibilidadCelda {
     curso?: string;
     tipoComponente?: string;
     grupo?: string;
+    seccion?: string;
     confirmado?: boolean;
     estadoBloque?: string;
     detalle?: string;

@@ -24,6 +24,7 @@ export class ValidadorHorario {
     const franjaFin = mapaConfig['FRANJA_FIN'] || '22:00';
     const almuerzoInicio = mapaConfig['BLOQUEO_ALMUERZO_INICIO'] || '12:00';
     const almuerzoFin = mapaConfig['BLOQUEO_ALMUERZO_FIN'] || '13:00';
+    const numSeccionesGenerales = parseInt(mapaConfig['NUM_GRUPOS_GENERALES'] || '1');
 
     // Obtener selecciones temporales del docente desde Redis
     const claves = await obtenerClavesPorPatron('seleccion_temporal:*');
@@ -289,14 +290,20 @@ export class ValidadorHorario {
       );
       const countSelecciones = seleccionesComp.length;
 
+      const getSectionName = (num: number) => {
+        if (numSeccionesGenerales === 1) return '';
+        const letters = ['A', 'B', 'C', 'D'];
+        return ` (Sección ${letters[num]})`;
+      };
+
       if (a.horas_asignadas > 0 && countSelecciones < a.horas_asignadas) {
         advertencias.push(
-          `Faltan ${a.horas_asignadas - countSelecciones}h de ${a.componente.tipo} para ${a.componente.oferta.curso.nombre} (Grupo ${String.fromCharCode(65 + a.numero_grupo_general)})`
+          `Faltan ${a.horas_asignadas - countSelecciones}h de ${a.componente.tipo} para ${a.componente.oferta.curso.nombre}${getSectionName(a.numero_grupo_general)}`
         );
       }
       if (a.horas_asignadas > 0 && countSelecciones > a.horas_asignadas) {
         conflictos.push(
-          `Conflicto: Se han asignado más horas de las requeridas para ${a.componente.oferta.curso.nombre} (Grupo ${String.fromCharCode(65 + a.numero_grupo_general)}) (${countSelecciones}/${a.horas_asignadas}h)`
+          `Conflicto: Se han asignado más horas de las requeridas para ${a.componente.oferta.curso.nombre}${getSectionName(a.numero_grupo_general)} (${countSelecciones}/${a.horas_asignadas}h)`
         );
       }
 

@@ -105,7 +105,7 @@ export class GestorDisponibilidad {
           include: {
             docente: true,
             ambiente: true,
-            componente: { include: { oferta: { include: { curso: true } } } },
+            componente: { include: { oferta: { include: { curso: true, ciclo: true } } } },
             grupo: true,
           },
         })
@@ -137,16 +137,37 @@ export class GestorDisponibilidad {
         })
       : [];
 
-    // 4. Selecciones temporales
+    // 4. Obtener configuración para nombres de sección
+    const configuracion = await prisma.configuracion.findFirst({ where: { clave: 'NUM_GRUPOS_GENERALES' } });
+    const numSeccionesGenerales = configuracion ? parseInt(configuracion.valor) || 1 : 1;
+    const getGroupName = (num: number) => {
+      if (numSeccionesGenerales === 1) return 'Sección Única';
+      const letters = ['A', 'B', 'C', 'D'];
+      return `Sección ${letters[num]}`;
+    };
+
+    // 5. Selecciones temporales
     const todasLasSelecciones = await GestorSeleccionTemporal.obtenerTodasLasSelecciones();
     
     // Pre-obtener todos los componentes involucrados en selecciones temporales para evitar await en el loop
     const idComponentesTemporales = [...new Set(todasLasSelecciones.map(s => s.idComponente))];
     const componentesTemporales = await prisma.curso_componente.findMany({
       where: { id: { in: idComponentesTemporales } },
-      include: { oferta: { include: { curso: true } } }
+      include: { oferta: { include: { curso: true, ciclo: true } } }
     });
     const mapaComponentesTemporales = new Map(componentesTemporales.map(c => [c.id, c]));
+
+    const idAmbientesTemporales = [...new Set(todasLasSelecciones.map(s => s.idAmbiente))];
+    const ambientesTemporales = await prisma.ambiente.findMany({
+      where: { id: { in: idAmbientesTemporales } }
+    });
+    const mapaAmbientesTemporales = new Map(ambientesTemporales.map(a => [a.id, a]));
+
+    const idGruposTemporales = [...new Set(todasLasSelecciones.map(s => s.idGrupo))];
+    const gruposTemporales = await prisma.grupo.findMany({
+      where: { id: { in: idGruposTemporales } }
+    });
+    const mapaGruposTemporales = new Map<number, any>(gruposTemporales.map(g => [g.id, g]));
     
     // Filtrar selecciones relevantes para el docente, ambiente y ciclo
     const seleccionesTemporalesAmbiente = todasLasSelecciones.filter(s => s.idAmbiente === idAmbiente);
@@ -235,8 +256,10 @@ export class GestorDisponibilidad {
               idAmbiente: bloqueDocenteBD.id_ambiente || undefined,
               ambienteCodigo: bloqueDocenteBD.ambiente?.codigo || 'Pendiente',
               curso: bloqueDocenteBD.componente.oferta.curso.nombre,
+              ciclo: (bloqueDocenteBD.componente.oferta as any).ciclo?.numero ?? null,
               tipoComponente: bloqueDocenteBD.componente.tipo,
               grupo: bloqueDocenteBD.grupo.codigo,
+              seccion: getGroupName(bloqueDocenteBD.numero_grupo_general || 0).replace('Sección ', ''),
               confirmado: true,
               estadoBloque: bloqueDocenteBD.estado,
             },
@@ -247,6 +270,10 @@ export class GestorDisponibilidad {
           (s) => s.diaSemana === dia && s.horaInicio === hora
         );
         if (temporalDocente) {
+          const compSel = mapaComponentesTemporales.get(temporalDocente.idComponente);
+          const ambSel = mapaAmbientesTemporales.get(temporalDocente.idAmbiente);
+          const grupoDB = mapaGruposTemporales.get(temporalDocente.idGrupo);
+          const grupoName = grupoDB ? grupoDB.codigo : getGroupName(temporalDocente.numeroGrupoGeneral ?? 0).replace('Sección ', '');
           const esAqui = temporalDocente.idAmbiente === idAmbiente;
           return {
             diaSemana: dia,
@@ -254,10 +281,12 @@ export class GestorDisponibilidad {
             estado: esAqui ? 'SELECCION_TEMPORAL' : 'DOCENTE_OTRO_AMBIENTE',
             info: {
               idAmbiente: temporalDocente.idAmbiente || undefined,
-              ambienteCodigo: 'Pendiente',
-              curso: 'Mi Selección',
-              tipoComponente: '',
-              grupo: '',
+              ambienteCodigo: ambSel?.codigo || 'Pendiente',
+              curso: compSel?.oferta.curso.nombre || 'Mi Selección',
+              ciclo: (compSel?.oferta as any)?.ciclo?.numero ?? null,
+              tipoComponente: compSel?.tipo || '',
+              grupo: grupoName,
+              seccion: getGroupName(temporalDocente.numeroGrupoGeneral ?? 0).replace('Sección ', ''),
               confirmado: false,
               estadoBloque: 'TEMPORAL',
             },
@@ -268,11 +297,6 @@ export class GestorDisponibilidad {
         const bloqueCicloBD = horariosCiclo.find(
           (h) => h.dia_semana === dia && h.hora_inicio === hora
         );
-        const getGroupName = (num: number) => {
-          const letters = ['A', 'B', 'C', 'D'];
-          return `Grupo ${letters[num]}`;
-        };
-        
         if (bloqueCicloBD) {
           const esLabActual = tipoComponenteReferencia === 'LABORATORIO';
           const esLabConflicto = bloqueCicloBD.componente.tipo === 'LABORATORIO';
@@ -346,7 +370,7 @@ export class GestorDisponibilidad {
               horaInicio: hora,
               estado: 'OCUPADO',
               info: {
-                detalle: 'Ambiente ocupado temporalmente por otro docente',
+                detalle: `Ambiente temporalmente ocupado por otro curso (${compTemporal?.oferta.curso.nombre || 'Desconocido'})`,
               },
             };
           }

@@ -14,13 +14,16 @@ interface MatrizProps {
         estado: string;
         info?: {
           idAmbiente?: number;
-          ambienteCodigo?: string;
           curso?: string;
           tipoComponente?: string;
           grupo?: string;
+          seccion?: string;
+          ciclo?: number | null;
+          ambienteCodigo?: string;
+          detalle?: string;
           confirmado?: boolean;
           estadoBloque?: string;
-          detalle?: string;
+          sesionId?: string;
         };
       }[];
     }[];
@@ -129,16 +132,26 @@ export function MatrizDisponibilidad({ matriz, alHacerClickCelda, bloqueado = fa
                             )}
                             {estadoVisible === 'SELECCION_TEMPORAL' && (
                               <div className="flex flex-col items-center justify-center p-0.5 text-center w-full">
+                                {celda.info?.ciclo != null && (
+                                  <span className="text-[7px] font-black text-amber-600 uppercase tracking-widest leading-none mb-0.5">
+                                    Ciclo {celda.info.ciclo}
+                                  </span>
+                                )}
                                 <span className="text-[9px] font-bold text-amber-900 leading-tight truncate max-w-[95px]" title={celda.info?.curso}>
                                   {celda.info?.curso}
                                 </span>
                                 <span className="text-[8px] font-semibold text-amber-700 leading-none mt-0.5">
-                                  {celda.info?.tipoComponente} • Gr. {celda.info?.grupo}
+                                  {celda.info?.tipoComponente} {celda.info?.seccion ? `• Sec. ${celda.info.seccion}` : ''} {celda.info?.tipoComponente === 'LABORATORIO' ? `• Gr. ${celda.info.grupo}` : ''}
                                 </span>
                               </div>
                             )}
                             {estadoVisible === 'DOCENTE_OTRO_AMBIENTE' && (
                               <div className="flex flex-col items-center justify-center p-0.5 text-center w-full">
+                                {celda.info?.ciclo != null && (
+                                  <span className="text-[7px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-0.5">
+                                    Ciclo {celda.info.ciclo}
+                                  </span>
+                                )}
                                 <span className="text-[9px] font-bold text-indigo-900 leading-tight truncate max-w-[95px]" title={celda.info?.curso}>
                                   {celda.info?.curso}
                                 </span>

@@ -231,6 +231,9 @@ export default function RegistroManualHorariosPage() {
     setAsignacionSeleccionada(idAsignacion);
     setComponenteSeleccionado(idComp);
     setNumeroGrupoGeneral(registro?.numeroGrupoGeneral || 0);
+    // Forzar refetch con los nuevos parámetros de componente.
+    // Usamos un setTimeout para que los estados se actualicen primero en el ref.
+    setTimeout(() => actualizarMatriz(), 0);
   };
 
   const manejarMensajeWS = useCallback((data: any) => {
@@ -280,7 +283,7 @@ export default function RegistroManualHorariosPage() {
       const horaFin = `${(parseInt(hora) + 1).toString().padStart(2, '0')}:00`;
       try {
         // Optimistic UI update
-        queryClient.setQueryData(['matriz-disponibilidad', ambienteId, idPeriodo, docenteId, componenteSeleccionado], (old: any) => {
+        queryClient.setQueriesData({ queryKey: ['matriz-disponibilidad', ambienteId, idPeriodo, docenteId] }, (old: any) => {
           if (!old) return old;
           return {
             ...old,
@@ -290,7 +293,7 @@ export default function RegistroManualHorariosPage() {
                 ...f,
                 celdas: f.celdas.map((c: any) => {
                   if (c.diaSemana !== dia) return c;
-                  return { ...c, estado: 'SELECCION_TEMPORAL', info: { curso: 'Procesando...', tipoComponente: '', grupo: '' } };
+                  return { ...c, estado: 'SELECCION_TEMPORAL', info: { curso: 'Procesando...', tipoComponente: '', grupo: '', seccion: '' } };
                 })
               };
             })
@@ -322,7 +325,7 @@ export default function RegistroManualHorariosPage() {
     } else if (estado === 'SELECCION_TEMPORAL' || estado === 'DOCENTE_OTRO_AMBIENTE') {
       try {
         // Optimistic UI update for deselection
-        queryClient.setQueryData(['matriz-disponibilidad', ambienteId, idPeriodo, docenteId, componenteSeleccionado], (old: any) => {
+        queryClient.setQueriesData({ queryKey: ['matriz-disponibilidad', ambienteId, idPeriodo, docenteId] }, (old: any) => {
           if (!old) return old;
           return {
             ...old,
@@ -508,6 +511,7 @@ export default function RegistroManualHorariosPage() {
                           componentes={progreso || []}
                           componenteSeleccionado={asignacionSeleccionada}
                           alCambiarComponente={alCambiarComponente}
+                          numSeccionesGenerales={restricciones?.numGruposGenerales || 1}
                         />
                       </div>
                     </div>
@@ -539,7 +543,7 @@ export default function RegistroManualHorariosPage() {
                           { valor: '', etiqueta: 'Elegir grupo' },
                           ...((gruposDisponibles || []).map((g: any) => ({
                             valor: String(g.id),
-                            etiqueta: `G${g.codigo} (Cap: ${g.capacidad_maxima})`,
+                            etiqueta: `Grupo ${g.codigo} (Cap: ${g.capacidad_maxima})`,
                           })) || []),
                         ]}
                         value={grupoSeleccionado?.toString() || ''}
@@ -579,7 +583,7 @@ export default function RegistroManualHorariosPage() {
                   <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex flex-col min-h-0 max-h-[140px]">
                     <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-2">Progreso de Horas</p>
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-0">
-                      <IndicadorProgresoHoras progreso={progreso || []}/>
+                      <IndicadorProgresoHoras progreso={progreso || []} numSeccionesGenerales={restricciones?.numGruposGenerales || 1} />
                     </div>
                   </div>
                   <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex flex-col min-h-0 max-h-[140px]">

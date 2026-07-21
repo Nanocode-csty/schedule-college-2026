@@ -8,6 +8,7 @@ interface ComponenteAsignable {
   nombreCurso: string;
   tipoComponente: string;
   numeroGrupoGeneral: number;
+  ciclo?: number | null;
   horasRequeridas: number;
   horasAsignadas: number;
 }
@@ -16,12 +17,14 @@ interface PanelSeleccionCursoProps {
   componentes: ComponenteAsignable[];
   componenteSeleccionado: number | null; // Now this is idAsignacion? Or idComponente? Wait let's decide: let's use idAsignacion!
   alCambiarComponente: (idAsignacion: number, idComponente: number) => void;
+  numSeccionesGenerales?: number;
 }
 
 // Helper function to get group name from index
-const getGroupName = (num: number) => {
+const getGroupName = (num: number, numSeccionesGenerales: number = 1) => {
+  if (numSeccionesGenerales === 1) return '';
   const letters = ['A', 'B', 'C', 'D'];
-  return `Grupo ${letters[num]}`;
+  return `Sección ${letters[num]}`;
 };
 
 const getGroupColor = (num: number) => {
@@ -38,6 +41,7 @@ export function PanelSeleccionCurso({
   componentes,
   componenteSeleccionado, // idAsignacion!
   alCambiarComponente,
+  numSeccionesGenerales = 1,
 }: PanelSeleccionCursoProps) {
   if (!componentes || componentes.length === 0) {
     return (
@@ -70,7 +74,7 @@ export function PanelSeleccionCurso({
                 'p-2 rounded-lg transition-colors flex items-center justify-center w-8 h-8',
                 esSeleccionado ? `${colors.bg} ${colors.text}` : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
               )}>
-                <span className="text-xs font-black">{getGroupName(comp.numeroGrupoGeneral)[getGroupName(comp.numeroGrupoGeneral).length-1]}</span>
+                <span className="text-xs font-black">{numSeccionesGenerales > 1 ? getGroupName(comp.numeroGrupoGeneral, numSeccionesGenerales).slice(-1) : 'U'}</span>
               </div>
               <div className="flex flex-col overflow-hidden">
                 <span className={cn(
@@ -83,8 +87,20 @@ export function PanelSeleccionCurso({
                   'text-[9px] font-black uppercase tracking-widest flex items-center gap-2',
                   esSeleccionado ? colors.text : 'text-slate-400'
                 )}>
-                  <span>{getGroupName(comp.numeroGrupoGeneral)}</span>
-                  <span>•</span>
+                  {comp.ciclo != null && (
+                    <>
+                      <span className={cn('px-1.5 py-0.5 rounded font-black text-[8px]', esSeleccionado ? colors.bg : 'bg-slate-100 text-slate-500')}>
+                        Ciclo {comp.ciclo}
+                      </span>
+                      <span>•</span>
+                    </>
+                  )}
+                  {numSeccionesGenerales > 1 && (
+                    <>
+                      <span>{getGroupName(comp.numeroGrupoGeneral, numSeccionesGenerales)}</span>
+                      <span>•</span>
+                    </>
+                  )}
                   <span>{comp.tipoComponente}</span>
                 </span>
               </div>

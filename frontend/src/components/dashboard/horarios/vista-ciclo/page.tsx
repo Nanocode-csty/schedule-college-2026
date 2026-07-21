@@ -11,10 +11,11 @@ import { Calendar, Filter, Download, FileSpreadsheet, FileText, FileDown, Share2
 import { Boton } from '@/components/ui/Boton';
 import { reportesService, descargarBlob } from '@/services/reportes.service';
 import { Modal } from '@/components/ui/Modal';
+import { configuracionService } from '@/services/configuracion.service';
 
 export default function VistaHorarioCicloPage() {
   const [cicloSeleccionado, setCicloSeleccionado] = useState<number | null>(null);
-  const [grupoGeneralSeleccionado, setGrupoGeneralSeleccionado] = useState<number | null>(null);
+  const [grupoGeneralSeleccionado, setGrupoGeneralSeleccionado] = useState<number | null>(0);
   const [descargando, setDescargando] = useState<'excel' | 'pdf' | 'excel-todo' | 'pdf-todo' | 'preview-pdf' | 'preview-pdf-todo' | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<{ blob: Blob; filename: string; tipo: 'pdf' | 'excel' } | null>(null);
@@ -25,6 +26,12 @@ export default function VistaHorarioCicloPage() {
     queryKey: ['periodo-activo-ciclo'],
     queryFn: () => periodosService.activo().then(res => res.data),
   });
+
+  const { data: restricciones } = useQuery({
+    queryKey: ['restricciones'],
+    queryFn: () => configuracionService.obtenerRestricciones().then(res => res.data),
+  });
+  const numGrupos = restricciones?.numGruposGenerales || 1;
 
   // Obtener ciclos permitidos del período activo
   const { data: ciclos } = useQuery({
@@ -166,18 +173,20 @@ export default function VistaHorarioCicloPage() {
                 value={cicloSeleccionado?.toString() || ''}
                 onChange={(e) => setCicloSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
               />
-              <Selector
-                label=""
-                opciones={[
-                  { valor: '', etiqueta: '-- Todos los Grupos --' },
-                  { valor: '0', etiqueta: 'Grupo A' },
-                  { valor: '1', etiqueta: 'Grupo B' },
-                  { valor: '2', etiqueta: 'Grupo C' },
-                  { valor: '3', etiqueta: 'Grupo D' },
-                ]}
-                value={grupoGeneralSeleccionado?.toString() || ''}
-                onChange={(e) => setGrupoGeneralSeleccionado(e.target.value ? parseInt(e.target.value) : null)}
-              />
+              {numGrupos > 1 && (
+                <Selector
+                  label=""
+                  opciones={[
+                    { valor: '', etiqueta: '-- Todas las Secciones --' },
+                    ...Array.from({ length: numGrupos }, (_, i) => ({
+                      valor: String(i),
+                      etiqueta: `Sección ${['A', 'B', 'C', 'D'][i]}`,
+                    })),
+                  ]}
+                  value={grupoGeneralSeleccionado?.toString() || ''}
+                  onChange={(e) => setGrupoGeneralSeleccionado(e.target.value === '' ? null : parseInt(e.target.value))}
+                />
+              )}
             </div>
           </CardContent>
         </Card>
