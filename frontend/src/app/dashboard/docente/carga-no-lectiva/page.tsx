@@ -677,8 +677,8 @@ export default function CargaNoLectivaPage() {
         dedicacion: docente.dedicacion,
         telefono: docente.telefono,
       },
-      habilita_actividades_gobierno: habilitaGobierno,
-      habilita_actividades_administracion: habilitaAdministracion,
+      habilita_actividades_gobierno: habilitaGobierno || Number(secciones.ACTIVIDADES_GOBIERNO?.horas || 0) > 0,
+      habilita_actividades_administracion: habilitaAdministracion || Number(secciones.ACTIVIDADES_ADMINISTRACION?.horas || 0) > 0,
       secciones: SECCIONES.map((seccion) => ({
         seccion: seccion.clave,
         horas: Number(secciones[seccion.clave].horas || 0),
