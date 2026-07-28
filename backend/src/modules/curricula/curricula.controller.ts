@@ -101,4 +101,18 @@ export class CurriculaController {
       res.status(500).json({ error: 'Error al reactivar la currícula' });
     }
   }
+
+  static async obtenerPlanEstudios(req: Request, res: Response) {
+    try {
+      const idCurricula = req.query.id_curricula ? parseInt(req.query.id_curricula as string) : undefined;
+      const plan = await CurriculaService.obtenerPlanEstudios(idCurricula);
+      if (!plan) {
+        return res.status(404).json({ error: 'No se encontró la currícula especificada o no hay una currícula vigente' });
+      }
+      res.json(plan);
+    } catch (error) {
+      console.error('Error al obtener plan de estudios:', error);
+      res.status(500).json({ error: 'Error al obtener el plan de estudios' });
+    }
+  }
 }

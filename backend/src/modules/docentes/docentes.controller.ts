@@ -4,11 +4,12 @@ import { crearDocenteSchema, actualizarDocenteSchema, disponibilidadDocenteSchem
 
 export class DocentesController {
   static async listar(req: Request, res: Response) {
-    const { modalidad, categoria, buscar } = req.query;
+    const { modalidad, categoria, buscar, id_departamento } = req.query;
     const docentes = await DocentesService.listar({
       modalidad: modalidad as string,
       categoria: categoria as string,
       buscar: buscar as string,
+      id_departamento: id_departamento ? parseInt(id_departamento as string) : undefined,
     });
     res.json(docentes);
   }

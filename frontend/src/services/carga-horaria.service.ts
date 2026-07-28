@@ -41,4 +41,29 @@ export const cargaHorariaService = {
     if (numeroGrupoGeneral !== undefined) params.numero_grupo_general = numeroGrupoGeneral;
     return apiClient.get(`/carga-horaria/cursos/${idPeriodo}`, { params });
   },
+
+  sugerirDocentes: (idCurso: number) =>
+    apiClient.get('/carga-horaria/sugerir-docentes', { params: { id_curso: idCurso } }),
+
+  previewGenerarOferta: (datos: {
+    id_periodo: number;
+    ids_curricula: number[];
+    ids_cursos_adicionales?: number[];
+    ids_cursos_excluidos?: number[];
+  }) => apiClient.post('/carga-horaria/generar-oferta/preview', datos),
+
+  confirmarGenerarOferta: (datos: {
+    id_periodo: number;
+    cursos: Array<{
+      id_curso: number;
+      id_ciclo: number;
+      tipo_curso: 'REGULAR' | 'ELECTIVO';
+      componentes: Array<{
+        tipo: 'TEORIA' | 'LABORATORIO';
+        horas_requeridas: number;
+        n_grupos: number;
+        id_docente_asignado?: number | null;
+      }>;
+    }>;
+  }) => apiClient.post('/carga-horaria/generar-oferta/confirmar', datos),
 };
