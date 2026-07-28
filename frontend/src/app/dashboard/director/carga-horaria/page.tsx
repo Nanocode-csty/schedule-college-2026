@@ -31,6 +31,7 @@ export default function CargaHorariaPage() {
   const [idDocente, setIdDocente] = useState<number>(0);
   const [horasAsignadas, setHorasAsignadas] = useState<number>(0);
   const [asignacionEditando, setAsignacionEditando] = useState<any>(null);
+  const [sugeridosIds, setSugeridosIds] = useState<number[]>([]);
 
   // Get restricciones to know numGruposGenerales
   const { data: restricciones } = useQuery({
@@ -131,6 +132,13 @@ export default function CargaHorariaPage() {
   const abrirModalAsignacion = (comp: any, oferta: any, asig?: any) => {
     setComponenteSeleccionado(comp);
     setOfertaSeleccionada(oferta);
+
+    const idDepartamentoCurso = oferta?.curso?.id_departamento;
+    const idsSug = idDepartamentoCurso
+      ? docentes.filter((d: any) => d.id_departamento === idDepartamentoCurso).map((d: any) => d.id)
+      : [];
+    setSugeridosIds(idsSug);
+
     if (asig) {
       setAsignacionEditando(asig);
       setIdDocente(asig.id_docente);
@@ -140,7 +148,7 @@ export default function CargaHorariaPage() {
       const totalRequerido = comp.horas_requeridas;
       const faltan = totalRequerido - horasAsignadasActual;
       setAsignacionEditando(null);
-      setIdDocente(0);
+      setIdDocente(idsSug.length === 1 ? idsSug[0] : 0);
       setHorasAsignadas(faltan > 0 ? faltan : 0);
     }
     setModalAsignacion(true);
@@ -487,17 +495,31 @@ export default function CargaHorariaPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
             <div className="md:col-span-8">
-              <SelectorFiltrable
-                label="Docente"
-                value={idDocente}
-                onChange={(valor) => setIdDocente(Number(valor))}
-                opciones={docentes.map((d: any) => ({
-                  valor: d.id,
-                  etiqueta: `${d.apellidos}, ${d.nombres}`
-                }))}
-                placeholder="Buscar docente..."
-                disabled={!!asignacionEditando}
-              />
+              <div className="space-y-2">
+                <SelectorFiltrable
+                  label={sugeridosIds.length > 0 ? `Docente (${sugeridosIds.length} sugerido${sugeridosIds.length !== 1 ? 's' : ''} del departamento)` : 'Docente'}
+                  value={idDocente}
+                  onChange={(valor) => setIdDocente(Number(valor))}
+                  opciones={docentes.map((d: any) => ({
+                    valor: d.id,
+                    etiqueta: `${d.apellidos}, ${d.nombres}${sugeridosIds.includes(d.id) ? ' ⭐ Sugerido' : ''}`
+                  }))}
+                  placeholder="Buscar docente..."
+                  disabled={!!asignacionEditando}
+                />
+                {sugeridosIds.length === 1 && (
+                  <div className="flex items-center gap-2 text-xs bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-lg border border-yellow-100">
+                    <span>⭐</span>
+                    <span>Solo hay 1 docente disponible en este departamento. Auto-seleccionado.</span>
+                  </div>
+                )}
+                {sugeridosIds.length === 0 && ofertaSeleccionada?.curso?.id_departamento && (
+                  <div className="flex items-center gap-2 text-xs bg-slate-50 text-slate-500 px-3 py-1.5 rounded-lg">
+                    <span>ℹ️</span>
+                    <span>No hay docentes registrados en el departamento de este curso.</span>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="md:col-span-4">
               <div className="space-y-1.5">

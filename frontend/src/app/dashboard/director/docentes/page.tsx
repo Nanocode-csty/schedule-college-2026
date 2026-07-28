@@ -10,7 +10,8 @@ import { Selector } from '@/components/ui/Selector';
 import { Modal } from '@/components/ui/Modal';
 import { NotificacionToast } from '@/components/ui/NotificacionToast';
 import { TablaDatos } from '@/components/ui/TablaDatos';
-import { UserPlus, Search, Mail, Phone, Briefcase, GraduationCap, Calendar, Edit2, Users } from 'lucide-react';
+import { departamentosService } from '@/services/departamentos.service';
+import { UserPlus, Search, Mail, Phone, Briefcase, GraduationCap, Building2, Calendar, Edit2, Users } from 'lucide-react';
 
 export default function GestionDocentesPage() {
   const queryClient = useQueryClient();
@@ -18,6 +19,13 @@ export default function GestionDocentesPage() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [docenteSeleccionado, setDocenteSeleccionado] = useState<any>(null);
   const [toast, setToast] = useState<{ mensaje: string; tipo: 'exito' | 'error' } | null>(null);
+
+  const { data: depsList } = useQuery({
+    queryKey: ['departamentos'],
+    queryFn: () => departamentosService.listar().then(res => res.data),
+  });
+
+  const depsOpts = Array.isArray(depsList) ? depsList : depsList?.data || [];
 
   const [formData, setFormData] = useState({
     codigo_ibm: '',
@@ -32,6 +40,7 @@ export default function GestionDocentesPage() {
     dedicacion: 'TIEMPO_COMPLETO_40H',
     antiguedad: 0,
     horas_max_semana: 40,
+    id_departamento: null as number | null,
     crear_usuario: true
   });
 
@@ -49,6 +58,7 @@ export default function GestionDocentesPage() {
       dedicacion: 'TIEMPO_COMPLETO_40H',
       antiguedad: 0,
       horas_max_semana: 40,
+      id_departamento: null,
       crear_usuario: true
     });
 
@@ -126,6 +136,7 @@ export default function GestionDocentesPage() {
       dedicacion: docente.dedicacion || 'TIEMPO_COMPLETO_40H',
       antiguedad: docente.antiguedad || 0,
       horas_max_semana: docente.horas_max_semana || 40,
+      id_departamento: docente.id_departamento || null,
       crear_usuario: false
     });
 
@@ -175,6 +186,18 @@ export default function GestionDocentesPage() {
           </span>
         </div>
       )
+    },
+    {
+      clave: 'departamento',
+      titulo: 'Departamento',
+      render: (item: any) => (
+        <div className="flex items-center gap-2">
+          <Building2 className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-xs font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-700">
+            {item.departamento?.nombre || '—'}
+          </span>
+        </div>
+      ),
     },
     { 
       clave: 'horas_max_semana', 
@@ -388,6 +411,24 @@ export default function GestionDocentesPage() {
                 ]}
               />
             </div>
+
+            <Selector
+              label="Departamento Académico"
+              value={formData.id_departamento ?? ''}
+              onChange={(e: any) =>
+                setFormData({
+                  ...formData,
+                  id_departamento: e.target.value ? Number(e.target.value) : null
+                })
+              }
+              opciones={[
+                { valor: '', etiqueta: '— Sin departamento —' },
+                ...(depsOpts.map((d: any) => ({
+                  valor: String(d.id),
+                  etiqueta: `${d.nombre} (${d.codigo})`
+                })))
+              ]}
+            />
 
             <Selector
               label="Dedicación"

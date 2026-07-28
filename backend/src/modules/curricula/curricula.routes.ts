@@ -8,6 +8,7 @@ router.use(middlewareAutenticacion);
 
 router.get('/', CurriculaController.listar);
 router.get('/vigente', CurriculaController.obtenerVigente);
+router.get('/plan-estudios', CurriculaController.obtenerPlanEstudios);
 router.post('/', CurriculaController.crear);
 router.get('/:id', CurriculaController.obtener);
 router.put('/:id', CurriculaController.actualizar);

@@ -22,6 +22,7 @@ import rutasCargaNoLectiva from './modules/carga-no-lectiva/carga-no-lectiva.rou
 import rutasCurricula from './modules/curricula/curricula.routes';
 import rutasSedes from './modules/sedes/sedes.routes';
 import rutasChat from './modules/chat/chat.routes';
+import rutasDepartamentos from './modules/departamentos/departamentos.routes';
 
 const app: Express = express();
 
@@ -50,6 +51,7 @@ app.use('/api/carga-no-lectiva', rutasCargaNoLectiva);
 app.use('/api/curricula', rutasCurricula);
 app.use('/api/sedes', rutasSedes);
 app.use('/api/chat', rutasChat);
+app.use('/api/departamentos', rutasDepartamentos);
 
 
 // Ruta de salud

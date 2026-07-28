@@ -14,6 +14,106 @@ interface OfertaSeed {
   asignaciones?: Array<{ profesor: string; T: number; P: number; L: number; G: number }>;
 }
 
+export const departamentos = [
+  { nombre: 'INGENIERIA DE SISTEMAS', codigo: 'SIST' },
+  { nombre: 'CIENCIAS PSICOLOGICAS', codigo: 'PSIC' },
+  { nombre: 'MATEMATICAS', codigo: 'MATE' },
+  { nombre: 'LENGUA NACIONAL Y LITERATURA', codigo: 'LENG' },
+  { nombre: 'ESTADISTICA', codigo: 'ESTA' },
+  { nombre: 'COMUNICACION SOCIAL', codigo: 'COMS' },
+  { nombre: 'FILOSOFIA Y ARTE', codigo: 'FILO' },
+  { nombre: 'CIENCIAS DE LA EDUCACION', codigo: 'EDUC' },
+  { nombre: 'CIENCIAS SOCIALES', codigo: 'CSOC' },
+  { nombre: 'ADMINISTRACION', codigo: 'ADMI' },
+  { nombre: 'CONTABILIDAD Y FINANZAS', codigo: 'CONT' },
+  { nombre: 'INGENIERIA INDUSTRIAL', codigo: 'INDU' },
+  { nombre: 'INGENIERIA QUIMICA', codigo: 'QUIM' },
+  { nombre: 'INGENIERIA AMBIENTAL', codigo: 'AMBI' },
+  { nombre: 'FISICA', codigo: 'FISI' },
+];
+
+// Datos curriculares oficiales del Plan de Estudios 2018 (horarios.md)
+// Mapea codigo de curso → { departamento, horas curriculares, condicion }
+export const cursoCurriculum: Record<string, { departamento: string; horas_teoricas: number; horas_practica: number; horas_laboratorio: number; condicion: string }> = {
+  // Ciclo 1
+  '1939': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 3, horas_practica: 2, horas_laboratorio: 0, condicion: 'ESPECIALIDAD' },
+  '2347': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 0, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '1854': { departamento: 'CIENCIAS PSICOLOGICAS', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'OBLIGATORIO' },
+  '1855': { departamento: 'MATEMATICAS', horas_teoricas: 1, horas_practica: 4, horas_laboratorio: 0, condicion: 'OBLIGATORIO' },
+  '1857': { departamento: 'LENGUA NACIONAL Y LITERATURA', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'OBLIGATORIO' },
+  '1863': { departamento: 'MATEMATICAS', horas_teoricas: 2, horas_practica: 4, horas_laboratorio: 0, condicion: 'OBLIGATORIO' },
+  '1867': { departamento: 'ESTADISTICA', horas_teoricas: 2, horas_practica: 4, horas_laboratorio: 0, condicion: 'OBLIGATORIO' },
+  '1883': { departamento: 'COMUNICACION SOCIAL', horas_teoricas: 0, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  '1884': { departamento: 'FILOSOFIA Y ARTE', horas_teoricas: 0, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  '1908': { departamento: 'CIENCIAS PSICOLOGICAS', horas_teoricas: 0, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  '2055': { departamento: 'CIENCIAS DE LA EDUCACION', horas_teoricas: 0, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  '2056': { departamento: 'FILOSOFIA Y ARTE', horas_teoricas: 0, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  // Ciclo 2
+  '2051': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 0, horas_laboratorio: 4, condicion: 'ESPECIALIDAD' },
+  '1858': { departamento: 'CIENCIAS SOCIALES', horas_teoricas: 1, horas_practica: 4, horas_laboratorio: 0, condicion: 'OBLIGATORIO' },
+  '1859': { departamento: 'CIENCIAS DE LA EDUCACION', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'OBLIGATORIO' },
+  '1860': { departamento: 'FILOSOFIA Y ARTE', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'OBLIGATORIO' },
+  '1861': { departamento: 'MATEMATICAS', horas_teoricas: 2, horas_practica: 4, horas_laboratorio: 0, condicion: 'OBLIGATORIO' },
+  '1875': { departamento: 'FISICA', horas_teoricas: 2, horas_practica: 4, horas_laboratorio: 0, condicion: 'OBLIGATORIO' },
+  '1888': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 0, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  '1889': { departamento: 'FILOSOFIA Y ARTE', horas_teoricas: 0, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  '1890': { departamento: 'CIENCIAS DE LA EDUCACION', horas_teoricas: 0, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  '2057': { departamento: 'FILOSOFIA Y ARTE', horas_teoricas: 0, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  // Ciclo 3
+  '2140': { departamento: 'ADMINISTRACION', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'ESPECIALIDAD' },
+  '2141': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '2142': { departamento: 'ESTADISTICA', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  // Ciclo 5
+  '2694': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '2695': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ELECTIVO' },
+  '2696': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 0, horas_laboratorio: 2, condicion: 'ELECTIVO' },
+  // Ciclo 6
+  '3125': { departamento: 'CONTABILIDAD Y FINANZAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '3126': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '3127': { departamento: 'INGENIERIA INDUSTRIAL', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '3128': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '3129': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '3130': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '3131': { departamento: 'INGENIERIA QUIMICA', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  '3132': { departamento: 'ADMINISTRACION', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'ELECTIVO' },
+  // Ciclo 7
+  '3444': { departamento: 'INGENIERIA INDUSTRIAL', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'ESPECIALIDAD' },
+  '3445': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '3446': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'ESPECIALIDAD' },
+  '3447': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  // Ciclo 9
+  '4494': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '4495': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '4496': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 0, horas_laboratorio: 2, condicion: 'ELECTIVO' },
+  '4497': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 0, horas_laboratorio: 2, condicion: 'ELECTIVO' },
+  // Ciclo 10
+  '4498': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '4499': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '4501': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '4502': { departamento: 'INGENIERIA INDUSTRIAL', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'ESPECIALIDAD' },
+  '4503': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '4504': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '5265': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  // Ciclo 4 (no en horarios.md, inferido)
+  '2650': { departamento: 'CONTABILIDAD Y FINANZAS', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'ESPECIALIDAD' },
+  '2651': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '2652': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '2653': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 1, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '2654': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '2655': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '2656': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '2657': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 0, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  // Ciclo 8 (no en horarios.md, inferido)
+  '4482': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '4483': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 1, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '4484': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '4485': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 1, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+  '4486': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 1, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '4487': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 1, horas_laboratorio: 3, condicion: 'ESPECIALIDAD' },
+  '4488': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 2, horas_practica: 2, horas_laboratorio: 0, condicion: 'ESPECIALIDAD' },
+  '4489': { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: 0, horas_practica: 2, horas_laboratorio: 2, condicion: 'ESPECIALIDAD' },
+};
+
 export const ambientesSeed = [
   "Audiovisuales",
   "Pabellón Ing. Industrial",
@@ -37,38 +137,38 @@ export const labsSeed = [
 export const docentesSeed = [
 
       // Ciclo I
-      { nombres: 'Marcelino', apellidos: 'Torres Villanueva', email: 'mtorres@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 10 },
-      { nombres: 'Alberto Carlos', apellidos: 'Mendoza de los Santos', email: 'amendozad@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 12 },
-      { nombres: 'Jorge Paul', apellidos: 'Cotrina Castellanos', email: 'jcotrinac@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 8 },
-      { nombres: 'Bertha Edelmira', apellidos: 'Urtecho Zavaleta', email: 'burtecho@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 7 },
-      { nombres: 'José Luis', apellidos: 'Ponte Bejarano', email: 'jponteb@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 15 },
-      { nombres: 'Jorge Luis', apellidos: 'Ríos Gonzales', email: 'jrios@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 9 },
-      { nombres: 'Segundo Valentín', apellidos: 'Guibar Obeso', email: 'sguibar@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 20 },
-      { nombres: 'Miguel Angel', apellidos: 'Ipanaque Zapata', email: 'mipanaque@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 6 },
-      { nombres: 'Martha Renee', apellidos: 'Cardoso Vigil', email: 'mcardoso@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 5 },
+      { nombres: 'Marcelino', apellidos: 'Torres Villanueva', email: 'mtorres@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 10, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Alberto Carlos', apellidos: 'Mendoza de los Santos', email: 'amendozad@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 12, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Jorge Paul', apellidos: 'Cotrina Castellanos', email: 'jcotrinac@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 8, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Bertha Edelmira', apellidos: 'Urtecho Zavaleta', email: 'burtecho@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 7, departamento: 'CIENCIAS PSICOLOGICAS' },
+      { nombres: 'José Luis', apellidos: 'Ponte Bejarano', email: 'jponteb@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 15, departamento: 'MATEMATICAS' },
+      { nombres: 'Jorge Luis', apellidos: 'Ríos Gonzales', email: 'jrios@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 9, departamento: 'LENGUA NACIONAL Y LITERATURA' },
+      { nombres: 'Segundo Valentín', apellidos: 'Guibar Obeso', email: 'sguibar@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 20, departamento: 'MATEMATICAS' },
+      { nombres: 'Miguel Angel', apellidos: 'Ipanaque Zapata', email: 'mipanaque@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 6, departamento: 'ESTADISTICA' },
+      { nombres: 'Martha Renee', apellidos: 'Cardoso Vigil', email: 'mcardoso@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 5, departamento: 'ESTADISTICA' },
       // Ciclo III
-      { nombres: 'Zoraida Yanet', apellidos: 'Vidal Melgarejo', email: 'zvidal@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 18 },
-      { nombres: 'Everson David', apellidos: 'Agreda Gamboa', email: 'eagreda@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 10 },
-      { nombres: 'Juan Carlos', apellidos: 'Obando Roldán', email: 'jobando@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 11 },
-      { nombres: 'Marcos Enrique', apellidos: 'Ferrer Reyna', email: 'mferrer@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 14 },
-      { nombres: 'María Teresita del niño Jesús', apellidos: 'Rojas García', email: 'mrojasg@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 16 },
-      { nombres: 'Juan Carlos', apellidos: 'Carrascal Cabanillas', email: 'jcarrascal@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 7 },
-      { nombres: 'Vilma Julia', apellidos: 'Mendez Gil', email: 'vmendez@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 9 },
-      { nombres: 'Sheyla Laura', apellidos: 'Escobedo Rodriguez', email: 'sescobedo@unitru.edu.pe', modalidad: 'CONTRATADO', categoria: 'AUXILIAR', antiguedad: 3 },
+      { nombres: 'Zoraida Yanet', apellidos: 'Vidal Melgarejo', email: 'zvidal@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 18, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Everson David', apellidos: 'Agreda Gamboa', email: 'eagreda@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 10, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Juan Carlos', apellidos: 'Obando Roldán', email: 'jobando@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 11, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Marcos Enrique', apellidos: 'Ferrer Reyna', email: 'mferrer@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 14, departamento: 'MATEMATICAS' },
+      { nombres: 'María Teresita del niño Jesús', apellidos: 'Rojas García', email: 'mrojasg@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 16, departamento: 'ESTADISTICA' },
+      { nombres: 'Juan Carlos', apellidos: 'Carrascal Cabanillas', email: 'jcarrascal@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 7, departamento: 'ADMINISTRACION' },
+      { nombres: 'Vilma Julia', apellidos: 'Mendez Gil', email: 'vmendez@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 9, departamento: 'FISICA' },
+      { nombres: 'Sheyla Laura', apellidos: 'Escobedo Rodriguez', email: 'sescobedo@unitru.edu.pe', modalidad: 'CONTRATADO', categoria: 'AUXILIAR', antiguedad: 3, departamento: 'CIENCIAS PSICOLOGICAS' },
       // Ciclo V
-      { nombres: 'Luis Enrique', apellidos: 'Boy Chavil', email: 'lboy@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 20 },
-      { nombres: 'Robert Jerry', apellidos: 'Sánchez Ticona', email: 'rsanchezt@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 8 },
-      { nombres: 'César', apellidos: 'Arellano Salazar', email: 'carellano@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 9 },
-      { nombres: 'Camilo Ernesto', apellidos: 'Suárez Rebaza', email: 'csuarez@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 12 },
-      { nombres: 'Marcos Gregorio', apellidos: 'Baca Lopez', email: 'mbaca@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 15 },
-      { nombres: 'Ana Maria', apellidos: 'Cuadra Mitzugaray', email: 'acuadra@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 7 },
+      { nombres: 'Luis Enrique', apellidos: 'Boy Chavil', email: 'lboy@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 20, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Robert Jerry', apellidos: 'Sánchez Ticona', email: 'rsanchezt@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 8, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'César', apellidos: 'Arellano Salazar', email: 'carellano@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 9, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Camilo Ernesto', apellidos: 'Suárez Rebaza', email: 'csuarez@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 12, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Marcos Gregorio', apellidos: 'Baca Lopez', email: 'mbaca@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 15, departamento: 'INGENIERIA INDUSTRIAL' },
+      { nombres: 'Ana Maria', apellidos: 'Cuadra Mitzugaray', email: 'acuadra@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 7, departamento: 'CONTABILIDAD Y FINANZAS' },
       // Ciclo VII
-      { nombres: 'Juan Pedro', apellidos: 'Santos Fernández', email: 'jsantos@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 18 },
-      { nombres: 'Ricardo Dario', apellidos: 'Mendoza Rivera', email: 'rmendoza@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 14 },
-      { nombres: 'Oscar Romel', apellidos: 'Alcántara Moreno', email: 'oalcantara@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 10 },
-      { nombres: 'Joe Alexis', apellidos: 'Gonzales Vasquez', email: 'jgonzalesv@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 6 },
+      { nombres: 'Juan Pedro', apellidos: 'Santos Fernández', email: 'jsantos@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 18, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Ricardo Dario', apellidos: 'Mendoza Rivera', email: 'rmendoza@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 14, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Oscar Romel', apellidos: 'Alcántara Moreno', email: 'oalcantara@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 10, departamento: 'INGENIERIA DE SISTEMAS' },
+      { nombres: 'Joe Alexis', apellidos: 'Gonzales Vasquez', email: 'jgonzalesv@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'ASOCIADO', antiguedad: 6, departamento: 'INGENIERIA DE SISTEMAS' },
       // Ciclo IX
-      { nombres: 'José Alberto', apellidos: 'Gómez Ávila', email: 'jgomez@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 11 },
+      { nombres: 'José Alberto', apellidos: 'Gómez Ávila', email: 'jgomez@unitru.edu.pe', modalidad: 'NOMBRADO', categoria: 'PRINCIPAL', antiguedad: 11, departamento: 'INGENIERIA DE SISTEMAS' },
 
 ];
 

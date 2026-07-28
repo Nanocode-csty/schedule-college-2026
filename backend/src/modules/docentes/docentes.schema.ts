@@ -39,6 +39,8 @@ const baseDocenteSchema = z.object({
 
   id_sede_principal: z.number().int().positive().optional(),
 
+  id_departamento: z.number().int().positive().nullable().optional(),
+
   crear_usuario: z.boolean().default(false),
 
   password: z.string().optional(),

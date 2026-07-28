@@ -104,6 +104,21 @@ model sede {
 }
 
 // ============================================================
+// 0.5 DEPARTAMENTO ACADÉMICO
+// ============================================================
+
+model departamento_academico {
+  id       Int      @id @default(autoincrement()) @map("id_departamento")
+  nombre   String   @db.VarChar(200)
+  codigo   String   @unique @db.VarChar(20)
+  activo   Boolean  @default(true)
+  cursos   curso[]
+  docentes docente[]
+
+  @@map("departamento_academico")
+}
+
+// ============================================================
 // 1. USUARIOS Y DOCENTES
 // ============================================================
 
@@ -141,6 +156,8 @@ model docente {
   horas_max_semana  Int?                       // Límite legal (ej. 20, 24, 30). Null = sin límite
   id_sede_principal  Int?
   sede_principal     sede?    @relation(fields: [id_sede_principal], references: [id])
+  id_departamento    Int?
+  departamento       departamento_academico? @relation(fields: [id_departamento], references: [id])
   activo            Boolean  @default(true)
   usuario           usuario?
   preferencias      preferencia_notificacion?
@@ -211,16 +228,23 @@ model curricula {
 }
 
 model curso {
-  id            Int        @id @default(autoincrement()) @map("id_curso")
-  nombre        String     @db.VarChar(150)
-  codigo        String     @unique @db.VarChar(20)
-  creditos      Int        @default(1)
-  activo        Boolean    @default(true)
-  id_curricula  Int?
-  curricula     curricula? @relation(fields: [id_curricula], references: [id])
-  id_sede       Int?
-  sede          sede?      @relation(fields: [id_sede], references: [id])
-  ofertas       curso_oferta[]
+  id                Int                     @id @default(autoincrement()) @map("id_curso")
+  nombre            String                  @db.VarChar(150)
+  codigo            String                  @unique @db.VarChar(20)
+  creditos          Int                     @default(1)
+  ciclo             Int?                    @db.SmallInt
+  horas_teoricas    Int?                    @default(0)
+  horas_practica    Int?                    @default(0)
+  horas_laboratorio Int?                    @default(0)
+  condicion         String?                 @db.VarChar(20)
+  id_departamento   Int?
+  departamento      departamento_academico? @relation(fields: [id_departamento], references: [id])
+  activo            Boolean                 @default(true)
+  id_curricula      Int?
+  curricula         curricula?              @relation(fields: [id_curricula], references: [id])
+  id_sede           Int?
+  sede              sede?                   @relation(fields: [id_sede], references: [id])
+  ofertas           curso_oferta[]
 
   @@map("curso")
 }

@@ -5,7 +5,6 @@ import {
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
-// Función para generar una contraseña temporal aleatoria
 const generarPasswordTemporal = (longitud: number = 8): string => {
   const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
   let password = '';
@@ -16,10 +15,11 @@ const generarPasswordTemporal = (longitud: number = 8): string => {
 };
 
 export class DocentesService {
-  static async listar(params: { modalidad?: string; categoria?: string; buscar?: string }) {
+  static async listar(params: { modalidad?: string; categoria?: string; buscar?: string; id_departamento?: number }) {
     const where: any = { activo: true };
     if (params.modalidad) where.modalidad = params.modalidad;
     if (params.categoria) where.categoria = params.categoria;
+    if (params.id_departamento) where.id_departamento = params.id_departamento;
     if (params.buscar) {
       where.OR = [
         { nombres: { contains: params.buscar, mode: 'insensitive' } },
@@ -27,19 +27,24 @@ export class DocentesService {
         { email: { contains: params.buscar, mode: 'insensitive' } },
       ];
     }
-    return prisma.docente.findMany({ where, orderBy: [{ modalidad: 'asc' }, { categoria: 'asc' }, { antiguedad: 'desc' }] });
+    return prisma.docente.findMany({
+      where,
+      include: { departamento: true },
+      orderBy: [{ modalidad: 'asc' }, { categoria: 'asc' }, { antiguedad: 'desc' }],
+    });
   }
 
   static async obtenerPorId(id: number) {
-    return prisma.docente.findUnique({ where: { id }, include: { usuario: true } });
+    return prisma.docente.findUnique({
+      where: { id },
+      include: { usuario: true, departamento: true },
+    });
   }
 
   static async crear(datos: any) {
     const normalizarTexto = (valor?: string | null) => {
       if (!valor) return null;
-
       const limpio = valor.trim();
-
       return limpio.length > 0 ? limpio : null;
     };
 
@@ -49,59 +54,43 @@ export class DocentesService {
 
     const data: Prisma.docenteCreateInput = {
       codigo_ibm: codigoIbm,
-
       dni: normalizarTexto(datos.dni),
-
       nombres: datos.nombres.trim(),
-
       apellidos: datos.apellidos.trim(),
-
       email: datos.email.trim().toLowerCase(),
-
       empleo: normalizarTexto(datos.empleo),
-
       telefono: normalizarTexto(datos.telefono),
-
       modalidad: datos.modalidad,
-
       categoria: datos.categoria,
-
       dedicacion:
         (datos.dedicacion as DedicacionDocente) ??
         DedicacionDocente.TIEMPO_COMPLETO_40H,
-
       antiguedad: datos.antiguedad ?? 0,
-
       horas_max_semana:
         datos.horas_max_semana ?? 40,
-
       activo: true,
     };
 
-    // Relación sede
     if (datos.id_sede_principal) {
       data.sede_principal = {
-        connect: {
-          id: Number(datos.id_sede_principal),
-        },
+        connect: { id: Number(datos.id_sede_principal) },
       };
     }
 
-    const docente = await prisma.docente.create({
-      data,
-    });
+    if (datos.id_departamento) {
+      data.departamento = {
+        connect: { id: Number(datos.id_departamento) },
+      };
+    }
+
+    const docente = await prisma.docente.create({ data });
 
     let passwordTemporal: string | null = null;
 
     if (datos.crear_usuario) {
       passwordTemporal =
-        datos.password ||
-        generarPasswordTemporal();
-
-      const hash = await bcrypt.hash(
-        passwordTemporal,
-        12
-      );
+        datos.password || generarPasswordTemporal();
+      const hash = await bcrypt.hash(passwordTemporal, 12);
 
       await prisma.usuario.create({
         data: {
@@ -113,15 +102,7 @@ export class DocentesService {
       });
     }
 
-    // Disponibilidad inicial
-    const dias = [
-      'LUNES',
-      'MARTES',
-      'MIERCOLES',
-      'JUEVES',
-      'VIERNES',
-    ];
-
+    const dias = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'];
     const horas = [
       ['07:00', '08:00'],
       ['08:00', '09:00'],
@@ -150,28 +131,29 @@ export class DocentesService {
       ),
     });
 
-    return {
-      ...docente,
-      passwordTemporal,
-    };
+    return { ...docente, passwordTemporal };
   }
 
   static async actualizar(id: number, datos: any) {
-    const {
-      crear_usuario,
-      password,
-      ...resto
-    } = datos;
+    const { crear_usuario, password, ...resto } = datos;
+
+    const data: any = { ...resto };
+
+    if (resto.id_departamento) {
+      data.departamento = { connect: { id: Number(resto.id_departamento) } };
+      delete data.id_departamento;
+    } else if (resto.id_departamento === null || resto.id_departamento === 0) {
+      data.departamento = { disconnect: true };
+      delete data.id_departamento;
+    }
+
+    data.dedicacion = resto.dedicacion
+      ? (resto.dedicacion as DedicacionDocente)
+      : undefined;
 
     return prisma.docente.update({
       where: { id },
-      data: {
-        ...resto,
-
-        dedicacion: resto.dedicacion
-          ? (resto.dedicacion as DedicacionDocente)
-          : undefined,
-      },
+      data,
     });
   }
 

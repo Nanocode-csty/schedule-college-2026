@@ -3,7 +3,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { PrismaClient, TipoComponente, TipoCurso } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { ambientesSeed, labsSeed, docentesSeed, ofertasSeed as realOfertasSeed } from './seed_data';
+import { ambientesSeed, labsSeed, docentesSeed, ofertasSeed as realOfertasSeed, departamentos, cursoCurriculum } from './seed_data';
 
 for (const envPath of [
   path.join(__dirname, '..', '.env'),
@@ -141,7 +141,21 @@ async function main() {
     console.log(`Currículas: ${curricula2024.nombre} (vigente), ${curricula2020.nombre}`);
 
     // ============================================================
-    // 6. AMBIENTES
+    // 6. DEPARTAMENTOS ACADÉMICOS
+    // ============================================================
+    const departamentoMap: Record<string, any> = {};
+    for (const d of departamentos) {
+      const dep = await prisma.departamento_academico.upsert({
+        where: { codigo: d.codigo },
+        update: { nombre: d.nombre },
+        create: { nombre: d.nombre, codigo: d.codigo },
+      });
+      departamentoMap[d.nombre] = dep;
+    }
+    console.log(`Departamentos: ${Object.keys(departamentoMap).length} creados`);
+
+    // ============================================================
+    // 7. AMBIENTES
     // ============================================================
     const ambientesCodigos = ambientesSeed;
     const labsCodigos = labsSeed;
@@ -180,9 +194,10 @@ async function main() {
 
     for (const [index, def] of docentesDef.entries()) {
       const codigoIbm = `IBM-${String(index + 1).padStart(3, '0')}`;
+      const idDepa = (def as any).departamento ? (departamentoMap[(def as any).departamento]?.id || null) : null;
       const doc = await prisma.docente.upsert({
         where: { email: def.email },
-        update: { codigo_ibm: codigoIbm },
+        update: { codigo_ibm: codigoIbm, id_departamento: idDepa },
         create: {
           codigo_ibm: codigoIbm,
           nombres: def.nombres,
@@ -192,6 +207,7 @@ async function main() {
           categoria: def.categoria,
           antiguedad: def.antiguedad,
           activo: true,
+          id_departamento: idDepa,
         },
       });
       docenteMap[def.email] = doc;
@@ -229,10 +245,27 @@ async function main() {
 
     for (const def of ofertasDef) {
       // Upsert curso
+      const curric = cursoCurriculum[def.codigo] || { departamento: 'INGENIERIA DE SISTEMAS', horas_teoricas: def.T, horas_practica: def.P, horas_laboratorio: def.L, condicion: 'ESPECIALIDAD' };
       const curso = await prisma.curso.upsert({
         where: { codigo: def.codigo },
-        update: { nombre: def.nombre, creditos: def.creditos, activo: true, id_curricula: curricula2024.id },
-        create: { nombre: def.nombre, codigo: def.codigo, creditos: def.creditos, activo: true, id_curricula: curricula2024.id },
+        update: {
+          nombre: def.nombre, creditos: def.creditos, activo: true, id_curricula: curricula2024.id,
+          ciclo: def.ciclo,
+          horas_teoricas: curric.horas_teoricas,
+          horas_practica: curric.horas_practica,
+          horas_laboratorio: curric.horas_laboratorio,
+          condicion: curric.condicion,
+          id_departamento: departamentoMap[curric.departamento]?.id || null,
+        },
+        create: {
+          nombre: def.nombre, codigo: def.codigo, creditos: def.creditos, activo: true, id_curricula: curricula2024.id,
+          ciclo: def.ciclo,
+          horas_teoricas: curric.horas_teoricas,
+          horas_practica: curric.horas_practica,
+          horas_laboratorio: curric.horas_laboratorio,
+          condicion: curric.condicion,
+          id_departamento: departamentoMap[curric.departamento]?.id || null,
+        },
       });
 
       const cicloObj = ciclosArr[def.ciclo - 1];

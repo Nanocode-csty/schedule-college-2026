@@ -23,6 +23,8 @@ import {
   GraduationCap,
   LayoutGrid,
   FileText,
+  Building2,
+  Sparkles,
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -48,6 +50,7 @@ export function Sidebar() {
     { href: '/dashboard/sedes', etiqueta: 'Sedes', Icono: MapPin },
     { href: '/dashboard/cursos', etiqueta: 'Catálogo de Cursos', Icono: BookOpen },
     { href: '/dashboard/curricula', etiqueta: 'Currículas', Icono: FileText },
+    { href: '/dashboard/departamentos', etiqueta: 'Departamentos', Icono: Building2 },
     { href: '/dashboard/configuracion/restricciones', etiqueta: 'Reglas del Sistema', Icono: Settings },
     //{ href: '/dashboard/configuracion/dias-no-laborables', etiqueta: 'Feriados/No Laborables', Icono: CalendarOff },
   ];
@@ -55,8 +58,10 @@ export function Sidebar() {
   const enlacesDirector = [
     { href: '/dashboard/admin', etiqueta: 'Dashboard Gestión', Icono: LayoutDashboard },
     { href: '/dashboard/director/docentes', etiqueta: 'Gestión de Docentes', Icono: Users },
+    { href: '/dashboard/director/generar-oferta', etiqueta: 'Generar Oferta', Icono: Sparkles },
     { href: '/dashboard/director/oferta-academica', etiqueta: 'Oferta Académica', Icono: GraduationCap },
     { href: '/dashboard/director/oferta-ciclos', etiqueta: 'Oferta por Ciclos', Icono: LayoutGrid },
+    { href: '/dashboard/director/plan-estudios', etiqueta: 'Plan de Estudios', Icono: BookOpen },
     { href: '/dashboard/director/carga-horaria', etiqueta: 'Asignación de Carga', Icono: Clock },
     { href: '/dashboard/director/reglas-academicas', etiqueta: 'Reglas Académicas', Icono: Settings },
   ];

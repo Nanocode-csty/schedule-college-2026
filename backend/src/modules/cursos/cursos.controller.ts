@@ -3,9 +3,6 @@ import { CursosService } from './cursos.service';
 import { crearCursoSchema, actualizarCursoSchema } from './cursos.schema';
 
 export class CursosController {
-  /**
-   * GET /api/cursos
-   */
   static async listar(req: Request, res: Response) {
     try {
       const { buscar, id_curricula } = req.query;
@@ -18,9 +15,6 @@ export class CursosController {
     }
   }
 
-  /**
-   * GET /api/cursos/:id
-   */
   static async obtener(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);
@@ -35,16 +29,9 @@ export class CursosController {
     }
   }
 
-  /**
-   * POST /api/cursos
-   */
   static async crear(req: Request, res: Response) {
     try {
-      const datos = crearCursoSchema.parse(req.body) as {
-        nombre: string;
-        codigo: string;
-        creditos: number;
-      };
+      const datos = crearCursoSchema.parse(req.body) as any;
       const curso = await CursosService.crear(datos);
       res.status(201).json(curso);
     } catch (error: any) {
@@ -59,9 +46,6 @@ export class CursosController {
     }
   }
 
-  /**
-   * PUT /api/cursos/:id
-   */
   static async actualizar(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);
@@ -82,9 +66,6 @@ export class CursosController {
     }
   }
 
-  /**
-   * DELETE /api/cursos/:id
-   */
   static async eliminar(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);
@@ -111,9 +92,6 @@ export class CursosController {
     }
   }
 
-  /**
-   * GET /api/cursos/buscar?q=texto
-   */
   static async buscar(req: Request, res: Response) {
     try {
       const { q } = req.query;
@@ -127,9 +105,6 @@ export class CursosController {
     }
   }
 
-  /**
-   * POST /api/cursos/importar
-   */
   static async importar(req: Request, res: Response) {
     try {
       const { cursos } = req.body;

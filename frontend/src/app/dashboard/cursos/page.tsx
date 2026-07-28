@@ -5,10 +5,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Search, Plus, BookOpen, Hash, Layers, FileText, MapPin } from 'lucide-react';
+import { Search, Plus, BookOpen, Hash, Layers, FileText, MapPin, Building2 } from 'lucide-react';
 import { cursosService } from '@/services/cursos.service';
 import { curriculaService } from '@/services/curricula.service';
 import { sedesService } from '@/services/sedes.service';
+import { departamentosService } from '@/services/departamentos.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { TablaDatos } from '@/components/ui/TablaDatos';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -22,8 +23,14 @@ const cursoSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
   codigo: z.string().min(1, 'El código es obligatorio'),
   creditos: z.coerce.number().int().min(1, 'Debe ser al menos 1'),
-  id_curricula: z.number().int().positive().nullable().optional(),
-  id_sede: z.number().int().positive().nullable().optional(),
+  ciclo: z.coerce.number().int().min(1).max(10).nullable().optional(),
+  horas_teoricas: z.coerce.number().int().min(0).default(0),
+  horas_practica: z.coerce.number().int().min(0).default(0),
+  horas_laboratorio: z.coerce.number().int().min(0).default(0),
+  condicion: z.string().nullable().optional(),
+  id_departamento: z.coerce.number().int().positive().nullable().optional(),
+  id_curricula: z.coerce.number().int().positive().nullable().optional(),
+  id_sede: z.coerce.number().int().positive().nullable().optional(),
 });
 
 type CursoFormData = z.infer<typeof cursoSchema>;
@@ -49,8 +56,14 @@ export default function CursosPage() {
     queryFn: () => sedesService.listar().then((res) => res.data),
   });
 
+  const { data: depsList } = useQuery({
+    queryKey: ['departamentos'],
+    queryFn: () => departamentosService.listar().then((res) => res.data),
+  });
+
   const curriculaOpts = Array.isArray(curriculaList) ? curriculaList : curriculaList?.data || [];
   const sedesOpts = Array.isArray(sedesList) ? sedesList : sedesList?.data || [];
+  const depsOpts = Array.isArray(depsList) ? depsList : depsList?.data || [];
 
   const { data: response, isLoading } = useQuery({
     queryKey: ['cursos', buscar, idCurriculaFiltro],
@@ -70,6 +83,12 @@ export default function CursosPage() {
       nombre: '',
       codigo: '',
       creditos: 1,
+      ciclo: null,
+      horas_teoricas: 0,
+      horas_practica: 0,
+      horas_laboratorio: 0,
+      condicion: null,
+      id_departamento: null,
       id_curricula: null,
       id_sede: null,
     },
@@ -108,13 +127,18 @@ export default function CursosPage() {
   });
 
   const abrirCrearCurso = () => {
-    // Find the sede central to set as default
     const sedeCentral = sedesOpts.find((s: any) => s.tipo === 'CENTRAL');
     setCursoEditando(null);
     resetCurso({
       nombre: '',
       codigo: '',
       creditos: 1,
+      ciclo: null,
+      horas_teoricas: 0,
+      horas_practica: 0,
+      horas_laboratorio: 0,
+      condicion: null,
+      id_departamento: null,
       id_curricula: null,
       id_sede: sedeCentral?.id ?? null,
     });
@@ -127,6 +151,12 @@ export default function CursosPage() {
       nombre: curso.nombre ?? '',
       codigo: curso.codigo ?? '',
       creditos: curso.creditos ?? 1,
+      ciclo: curso.ciclo ?? null,
+      horas_teoricas: curso.horas_teoricas ?? 0,
+      horas_practica: curso.horas_practica ?? 0,
+      horas_laboratorio: curso.horas_laboratorio ?? 0,
+      condicion: curso.condicion ?? null,
+      id_departamento: curso.id_departamento ?? null,
       id_curricula: curso.id_curricula ?? null,
       id_sede: curso.id_sede ?? null,
     });
@@ -161,63 +191,62 @@ export default function CursosPage() {
       )
     },
     { 
-      clave: 'creditos', 
-      titulo: 'Créditos', 
+      clave: 'ciclo', 
+      titulo: 'Ciclo',
       render: (item: any) => (
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-slate-400" />
-          <span className="bg-slate-100 px-2 py-1 rounded-lg text-xs font-bold text-slate-600">
-            {item.creditos} CR
-          </span>
-        </div>
+        <span className="bg-unt-primary/10 text-unt-primary px-3 py-1 rounded-full text-xs font-bold">
+          {item.ciclo ? `Ciclo ${item.ciclo}` : '—'}
+        </span>
       )
     },
     {
-      clave: 'curricula',
-      titulo: 'Currícula',
+      clave: 'horas',
+      titulo: 'Horas (T/P/L)',
       render: (item: any) => (
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-slate-400" />
-          {item.curricula ? (
-            <span className={`text-xs font-bold px-2 py-1 rounded-lg ${item.curricula.vigente ? 'bg-unt-primary/10 text-unt-primary' : 'bg-slate-100 text-slate-500'}`}>
-              {item.curricula.nombre}
-            </span>
-          ) : (
-            <span className="text-xs text-slate-400 italic">Sin asignar</span>
-          )}
+        <div className="flex gap-1 text-xs font-bold">
+          <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">{item.horas_teoricas || 0}T</span>
+          <span className="bg-green-50 text-green-700 px-2 py-1 rounded">{item.horas_practica || 0}P</span>
+          <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded">{item.horas_laboratorio || 0}L</span>
         </div>
-      ),
+      )
     },
-    {
-      clave: 'sede',
-      titulo: 'Sede',
+    { 
+      clave: 'creditos', 
+      titulo: 'Créditos', 
       render: (item: any) => (
-        <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-slate-400" />
-          {item.sede ? (
-            <span className={`text-xs font-bold px-2 py-1 rounded-lg ${item.sede.tipo === 'CENTRAL' ? 'bg-unt-primary/10 text-unt-primary' : 'bg-slate-100 text-slate-500'}`}>
-              {item.sede.nombre}
-            </span>
-          ) : (
-            <span className="text-xs text-slate-400 italic">Sin asignar</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      clave: 'activo',
-      titulo: 'Estado',
-      render: (item: any) => (
-        <span
-          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-            item.activo 
-              ? 'bg-green-50 text-green-700 border border-green-100' 
-              : 'bg-red-50 text-red-700 border border-red-100'
-          }`}
-        >
-          <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.activo ? 'bg-green-500' : 'bg-red-500'}`} />
-          {item.activo ? 'Activo' : 'Inactivo'}
+        <span className="bg-slate-100 px-2 py-1 rounded-lg text-xs font-bold text-slate-600">
+          {item.creditos} CR
         </span>
+      )
+    },
+    {
+      clave: 'condicion',
+      titulo: 'Tipo',
+      render: (item: any) => {
+        let color = 'bg-slate-100 text-slate-600';
+        if (item.condicion === 'OBLIGATORIO' || item.condicion === 'S') color = 'bg-blue-50 text-blue-700';
+        if (item.condicion === 'ELECTIVO' || item.condicion === 'EL') color = 'bg-purple-50 text-purple-700';
+        return (
+          <span className={`text-xs font-bold px-2 py-1 rounded-lg ${color}`}>
+            {item.condicion === 'S' ? 'ESPECIALIDAD' : item.condicion || '—'}
+          </span>
+        );
+      }
+    },
+    {
+      clave: 'departamento',
+      titulo: 'Departamento',
+      render: (item: any) => (
+        <div className="flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-slate-400" />
+          {item.departamento ? (
+            <span className="text-xs font-bold bg-slate-100 px-2 py-1 rounded-lg text-slate-700">
+              {item.departamento.nombre}
+            </span>
+          ) : (
+            <span className="text-xs text-slate-400 italic">Sin asignar</span>
+          )}
+        </div>
       ),
     },
   ];
@@ -285,6 +314,7 @@ export default function CursosPage() {
         isOpen={mostrarModalCurso} 
         onClose={cerrarModalCurso}
         titulo={cursoEditando ? 'Editar Curso' : 'Registrar Nuevo Curso'}
+        className="max-h-[90vh] overflow-y-auto"
       >
         <form onSubmit={handleSubmitCurso((datos) => guardarCursoMutation.mutate(datos))} className="space-y-6">
           <div className="grid gap-6">
@@ -300,19 +330,62 @@ export default function CursosPage() {
               {...registerCurso('nombre')} 
               error={erroresCurso.nombre?.message} 
             />
-            <CampoTexto 
-              label="Número de Créditos" 
-              type="number" 
-              min="1" 
-              max="10"
-              {...registerCurso('creditos')} 
-              error={erroresCurso.creditos?.message} 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CampoTexto 
+                label="Ciclo (1-10)" 
+                type="number" min="1" max="10"
+                {...registerCurso('ciclo')} 
+              />
+              <CampoTexto 
+                label="Créditos" 
+                type="number" min="1" max="10"
+                {...registerCurso('creditos')} 
+                error={erroresCurso.creditos?.message} 
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <CampoTexto 
+                label="Horas Teóricas" 
+                type="number" min="0"
+                {...registerCurso('horas_teoricas')} 
+              />
+              <CampoTexto 
+                label="Horas Prácticas" 
+                type="number" min="0"
+                {...registerCurso('horas_practica')} 
+              />
+              <CampoTexto 
+                label="Horas Laboratorio" 
+                type="number" min="0"
+                {...registerCurso('horas_laboratorio')} 
+              />
+            </div>
+            <Selector
+              label="Condición"
+              opciones={[
+                { valor: '', etiqueta: '— Seleccionar —' },
+                { valor: 'OBLIGATORIO', etiqueta: 'Obligatorio' },
+                { valor: 'ELECTIVO', etiqueta: 'Electivo' },
+                { valor: 'S', etiqueta: 'Especialidad' },
+              ]}
+              {...registerCurso('condicion')}
+            />
+            <Selector
+              label="Departamento Académico"
+              opciones={[
+                { valor: '', etiqueta: '— Sin asignar —' },
+                ...(depsOpts.map((d: any) => ({
+                  valor: String(d.id),
+                  etiqueta: d.nombre
+                })))
+              ]}
+              {...registerCurso('id_departamento', { valueAsNumber: true })}
             />
             <Selector
               label="Currícula"
               error={erroresCurso.id_curricula?.message}
               opciones={[
-                { valor: '', etiqueta: '-- Sin asignar --' },
+                { valor: '', etiqueta: '— Sin asignar —' },
                 ...(curriculaOpts.map((c: any) => ({
                   valor: String(c.id),
                   etiqueta: `${c.nombre}${c.vigente ? ' (Vigente)' : ''}`
@@ -324,7 +397,7 @@ export default function CursosPage() {
               label="Sede"
               error={erroresCurso.id_sede?.message}
               opciones={[
-                { valor: '', etiqueta: '-- Sin asignar --' },
+                { valor: '', etiqueta: '— Sin asignar —' },
                 ...(sedesOpts.map((s: any) => ({
                   valor: String(s.id),
                   etiqueta: `${s.nombre}${s.tipo === 'CENTRAL' ? ' (Sede Central)' : ' (Filial)'}`
